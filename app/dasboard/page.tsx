@@ -16,7 +16,8 @@ import {
   ChevronRight,
   Download,
   Trash2,
-  LogOut
+  LogOut,
+  X
 } from "lucide-react";
 
 interface Report {
@@ -29,6 +30,7 @@ interface Report {
   praOperasi: string;
   pascaOperasi: string;
   kategori: string;
+  prioritas?: string;
   status: string;
 }
 
@@ -37,8 +39,13 @@ export default function DashboardPage() {
   const pathname = usePathname();
   const [reports, setReports] = useState<Report[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedKategoriFilter, setSelectedKategoriFilter] = useState("SEMUA");
   const [showNotif, setShowNotif] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+
+  // State untuk Modal Detail Tiket (ST)
+  const [selectedReport, setSelectedReport] = useState<Report | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem("rtg_reports");
@@ -47,13 +54,19 @@ export default function DashboardPage() {
     }
   }, []);
 
-  const filteredReports = reports.filter(
-    (r) =>
+  // Filter gabungan berdasarkan input pencarian & tombol kategori
+  const filteredReports = reports.filter((r) => {
+    const matchesSearch =
       r.rtg.toLowerCase().includes(searchTerm.toLowerCase()) ||
       r.pelapor.toLowerCase().includes(searchTerm.toLowerCase()) ||
       r.praOperasi.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      r.pascaOperasi.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+      r.pascaOperasi.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesKategori =
+      selectedKategoriFilter === "SEMUA" || r.kategori === selectedKategoriFilter;
+
+    return matchesSearch && matchesKategori;
+  });
 
   const reportedRtgSet = new Set(reports.map((r) => r.rtg));
 
@@ -65,7 +78,8 @@ export default function DashboardPage() {
     return {
       id: unitName,
       status: isReported ? "PERBAIKAN" : "NORMAL",
-      badge: isReported ? "A Perlu tindakan" : undefined,
+      prioritas: reportData?.prioritas || "SEDANG",
+      badge: isReported ? `A ${reportData?.prioritas || "Perlu tindakan"}` : undefined,
       sub: isReported ? `Tiket: ${reportData?.kategori || "Perlu Perbaikan"}` : "Tanpa laporan aktif",
     };
   });
@@ -98,6 +112,7 @@ export default function DashboardPage() {
       "Nomor RTG": r.rtg,
       Lokasi: r.lokasi,
       Pelapor: r.pelapor,
+      Prioritas: r.prioritas || "SEDANG",
       Kategori: r.kategori,
       "Temuan Pra-Operasi": r.praOperasi,
       "Temuan Pasca-Operasi": r.pascaOperasi,
@@ -291,7 +306,9 @@ export default function DashboardPage() {
             <div>
               <p className="text-xs text-slate-500 font-medium">RTG Beroperasi Normal</p>
               <h3 className="text-2xl font-bold mt-1 text-slate-800">{totalNormal} <span className="text-xs font-normal text-slate-500">dari 35 unit</span></h3>
-              <p className="text-[11px] text-emerald-600 mt-2 font-medium">• {Math.round((totalNormal / 35) * 100)}% Kesiapan Operasi</p>
+              <p className="text-[11px] text-emerald-600 mt-2 font-medium">
+                • {Math.round((totalNormal / 35) * 100)}% Kesiapan Operasi
+              </p>
             </div>
             <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg"><CheckCircle2 size={20} /></div>
           </div>
@@ -345,22 +362,26 @@ export default function DashboardPage() {
                 key={item.id} 
                 className={`p-3 rounded-lg border transition ${
                   item.status === "PERBAIKAN" 
-                    ? "bg-red-50 border-red-200 text-red-900" 
+                    ? item.prioritas === "EMERGENCY"
+                      ? "bg-red-100 border-red-500 text-red-900 animate-pulse"
+                      : "bg-amber-50 border-amber-300 text-amber-900"
                     : "bg-slate-50 border-slate-200 hover:border-emerald-300"
                 }`}
               >
                 <div className="flex justify-between items-start">
                   <span className="font-bold text-sm text-slate-800">{item.id}</span>
                   <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                    item.status === "PERBAIKAN" ? "bg-red-200 text-red-700" : "bg-emerald-100 text-emerald-700"
+                    item.status === "PERBAIKAN" 
+                      ? item.prioritas === "EMERGENCY" ? "bg-red-600 text-white" : "bg-amber-200 text-amber-800"
+                      : "bg-emerald-100 text-emerald-700"
                   }`}>
                     {item.status}
                   </span>
                 </div>
                 {item.badge && (
-                  <p className="text-[10px] font-semibold text-red-600 mt-2">{item.badge}</p>
+                  <p className="text-[10px] font-bold text-red-600 mt-2">{item.badge}</p>
                 )}
-                <p className={`text-[10px] mt-1 ${item.status === "PERBAIKAN" ? "text-red-500" : "text-slate-400"}`}>
+                <p className={`text-[10px] mt-1 ${item.status === "PERBAIKAN" ? "text-slate-700 font-medium" : "text-slate-400"}`}>
                   {item.sub}
                 </p>
               </div>
@@ -404,9 +425,9 @@ export default function DashboardPage() {
                           <span className="text-[10px] text-slate-700 font-bold mb-1">{bar.value}</span>
                           <div
                             style={{ height: `${barHeightPercent}%` }}
-                            className="w-full max-w-[36px] bg-[#0e5c75] rounded-t-md hover:bg-emerald-500 transition-all duration-300 shadow-sm"
+                            className="w-full max-w-9 bg-[#0e5c75] rounded-t-md hover:bg-emerald-500 transition-all duration-300 shadow-sm"
                           ></div>
-                          <span className="absolute -bottom-5 text-[10px] text-slate-600 font-medium truncate max-w-[48px] text-center">
+                          <span className="absolute -bottom-5 text-[10px] text-slate-600 font-medium truncate max-w-12 text-center">
                             {bar.label}
                           </span>
                         </div>
@@ -429,7 +450,7 @@ export default function DashboardPage() {
 
           <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
             <div>
-              <div className="flex justify-between items-center mb-1">
+              <div className="flex justify-between items-center mb-3">
                 <h3 className="font-bold text-sm text-slate-800">Laporan Kendala Terbaru</h3>
                 <div className="flex space-x-2">
                   <div className="relative">
@@ -449,7 +470,24 @@ export default function DashboardPage() {
                   )}
                 </div>
               </div>
-              <p className="text-xs text-slate-400 mb-4">Catatan inspeksi operasional terkini dari lapangan</p>
+
+              {/* Filter Tombol Kategori */}
+              <div className="flex items-center space-x-1.5 mb-4 overflow-x-auto pb-1">
+                <span className="text-[11px] font-bold text-slate-400 mr-1">Filter:</span>
+                {["SEMUA", "Sistem Hidrolik", "Spreader & Twistlock", "Hoist & Motor", "Sistem Elektrikal / Genset", "Gantry & Ban"].map((kat) => (
+                  <button
+                    key={kat}
+                    onClick={() => setSelectedKategoriFilter(kat)}
+                    className={`px-2.5 py-1 rounded-full text-[10px] font-semibold transition whitespace-nowrap ${
+                      selectedKategoriFilter === kat
+                        ? "bg-[#0b3c3c] text-white"
+                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    }`}
+                  >
+                    {kat}
+                  </button>
+                ))}
+              </div>
 
               <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
@@ -457,7 +495,7 @@ export default function DashboardPage() {
                     <tr className="border-b border-slate-100 bg-slate-50 text-slate-500 font-medium">
                       <th className="py-2 px-3">TANGGAL</th>
                       <th className="py-2 px-3">RTG</th>
-                      <th className="py-2 px-3">PELAPOR</th>
+                      <th className="py-2 px-3">PRIORITAS</th>
                       <th className="py-2 px-3">TEMUAN PRA-OPERASI</th>
                       <th className="py-2 px-3">TEMUAN PASCA-OPERASI</th>
                       <th className="py-2 px-3">ST</th>
@@ -477,13 +515,22 @@ export default function DashboardPage() {
                             {item.tanggal}<br />
                             <span className="text-[10px] text-slate-400">{item.jam}</span>
                           </td>
-                          <td className="py-3 px-3 font-bold text-red-600 whitespace-nowrap">
+                          <td className="py-3 px-3 font-bold text-slate-800 whitespace-nowrap">
                             {item.rtg}<br />
                             <span className="font-normal text-[10px] text-slate-400">{item.lokasi}</span>
                           </td>
-                          <td className="py-3 px-3 font-medium text-slate-700">
-                            {item.pelapor}<br />
-                            <span className="font-normal text-[10px] text-slate-400">{item.kategori}</span>
+                          <td className="py-3 px-3">
+                            <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full ${
+                              item.prioritas === "EMERGENCY" 
+                                ? "bg-red-600 text-white animate-pulse" 
+                                : item.prioritas === "RENDAH" 
+                                ? "bg-blue-100 text-blue-700" 
+                                : "bg-amber-100 text-amber-700"
+                            }`}>
+                              {item.prioritas || "SEDANG"}
+                            </span>
+                            <br />
+                            <span className="text-[10px] text-slate-400">{item.kategori}</span>
                           </td>
                           <td className="py-3 px-3 text-red-600 bg-red-50/50 p-2 rounded">
                             {item.praOperasi}
@@ -491,8 +538,17 @@ export default function DashboardPage() {
                           <td className="py-3 px-3 text-slate-600">
                             {item.pascaOperasi}
                           </td>
-                          <td className="py-3 px-3">
-                            <ChevronRight className="text-slate-400" size={16} />
+                          <td className="py-3 px-3 whitespace-nowrap">
+                            <button
+                              onClick={() => {
+                                setSelectedReport(item);
+                                setShowDetailModal(true);
+                              }}
+                              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-[#0e5c75] transition flex items-center space-x-1"
+                              title="Lihat Detail Tiket (ST)"
+                            >
+                              <ChevronRight size={18} />
+                            </button>
                           </td>
                         </tr>
                       ))
@@ -509,6 +565,70 @@ export default function DashboardPage() {
           </div>
         </div>
       </main>
+
+      {/* Modal Detail Tiket & Aksi Penanganan Status (ST) */}
+      {showDetailModal && selectedReport && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <div>
+                <span className="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded">
+                  TIKET TKN-#{selectedReport.id.toString().slice(-4)}
+                </span>
+                <h3 className="text-base font-bold text-slate-800 mt-1">
+                  Detail Status Laporan {selectedReport.rtg}
+                </h3>
+              </div>
+              <button
+                onClick={() => setShowDetailModal(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="grid grid-cols-2 gap-2 bg-slate-50 p-3 rounded-lg">
+                <div>
+                  <p className="text-slate-400">Lokasi Yard:</p>
+                  <p className="font-bold text-slate-700">{selectedReport.lokasi}</p>
+                </div>
+                <div>
+                  <p className="text-slate-400">Waktu Pelaporan:</p>
+                  <p className="font-bold text-slate-700">{selectedReport.tanggal} • {selectedReport.jam}</p>
+                </div>
+                <div>
+                  <p className="text-slate-400">Kategori Kendala:</p>
+                  <p className="font-bold text-slate-700">{selectedReport.kategori}</p>
+                </div>
+                <div>
+                  <p className="text-slate-400">Tingkat Prioritas:</p>
+                  <p className="font-bold text-amber-600">{selectedReport.prioritas || "SEDANG"}</p>
+                </div>
+              </div>
+
+              <div>
+                <p className="font-bold text-slate-700 mb-1">Temuan Pra-Operasi:</p>
+                <p className="p-2.5 bg-red-50 text-red-700 rounded-lg text-xs">{selectedReport.praOperasi}</p>
+              </div>
+
+              <div>
+                <p className="font-bold text-slate-700 mb-1">Temuan Pasca-Operasi:</p>
+                <p className="p-2.5 bg-slate-50 text-slate-700 rounded-lg text-xs">{selectedReport.pascaOperasi}</p>
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 flex justify-end space-x-2">
+              <button
+                onClick={() => setShowDetailModal(false)}
+                className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-semibold hover:bg-slate-200"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <footer className="max-w-7xl mx-auto px-6 mt-6 flex justify-between items-center text-[11px] text-slate-400">

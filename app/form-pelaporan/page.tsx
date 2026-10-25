@@ -16,6 +16,8 @@ import {
   MapPin,
   Wrench,
   LogOut,
+  AlertOctagon,
+  Zap,
 } from "lucide-react";
 
 export default function FormPelaporanPage() {
@@ -29,6 +31,7 @@ export default function FormPelaporanPage() {
   const [nomorRtg, setNomorRtg] = useState("");
   const [lokasiBlok, setLokasiBlok] = useState("");
   const [kategori, setKategori] = useState("");
+  const [prioritas, setPrioritas] = useState("SEDANG");
   const [praOperasi, setPraOperasi] = useState("");
   const [pascaOperasi, setPascaOperasi] = useState("");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -61,6 +64,14 @@ export default function FormPelaporanPage() {
     "Hoist & Motor",
     "Sistem Elektrikal / Genset",
     "Gantry & Ban",
+  ];
+
+  const quickTexts = [
+    "Kebocoran oli hidrolik pada sling hoist",
+    "Spreader twistlock tidak melaku terkunci (Jammed)",
+    "Tekanan angin ban gantry drop / kempes",
+    "Genset overheat & indikator suhu naik",
+    "Rem hoist tidak merespons presisi",
   ];
 
   const handleRtgChange = (val: string) => {
@@ -102,6 +113,7 @@ export default function FormPelaporanPage() {
       praOperasi: praOperasi || "-",
       pascaOperasi: pascaOperasi || "-",
       kategori: kategori || "Kendala Umum",
+      prioritas: prioritas,
       status: "PERBAIKAN",
     };
 
@@ -109,12 +121,24 @@ export default function FormPelaporanPage() {
     localStorage.setItem("rtg_reports", JSON.stringify([newReport, ...existingReports]));
 
     alert(`Laporan unit ${nomorRtg} berhasil dikirim!`);
+
+    setNomorRtg("");
+    setLokasiBlok("");
+    setKategori("");
+    setPrioritas("SEDANG");
+    setPraOperasi("");
+    setPascaOperasi("");
+    setSelectedFiles([]);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+
     router.push("/dasboard");
   };
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-800 font-sans text-sm pb-10">
-      {/* Header / Navbar Baru */}
+      {/* Header / Navbar */}
       <header className="bg-[#0b3c3c] text-white px-8 py-4 flex items-center justify-between shadow-md relative z-50">
         <div className="flex items-center space-x-3.5">
           <div className="bg-emerald-600 p-2 rounded-lg shadow-sm">
@@ -312,6 +336,50 @@ export default function FormPelaporanPage() {
               </div>
             )}
 
+            {/* Tingkat Urgensi Alat */}
+            <div>
+              <label className="text-xs font-bold text-slate-700 flex items-center space-x-1.5 mb-2">
+                <AlertOctagon size={14} className="text-red-500" />
+                <span>Tingkat Keparahan / Urgensi Alat</span>
+              </label>
+              <div className="grid grid-cols-3 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setPrioritas("EMERGENCY")}
+                  className={`py-2 px-3 rounded-lg text-xs font-bold border flex items-center justify-center space-x-1.5 transition ${
+                    prioritas === "EMERGENCY"
+                      ? "bg-red-600 text-white border-red-600 shadow-sm animate-pulse"
+                      : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-red-50"
+                  }`}
+                >
+                  <span>🔴 Emergency (Stop Operasi)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPrioritas("SEDANG")}
+                  className={`py-2 px-3 rounded-lg text-xs font-bold border flex items-center justify-center space-x-1.5 transition ${
+                    prioritas === "SEDANG"
+                      ? "bg-amber-500 text-white border-amber-500 shadow-sm"
+                      : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-amber-50"
+                  }`}
+                >
+                  <span>🟠 Sedang (Slow Response)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPrioritas("RENDAH")}
+                  className={`py-2 px-3 rounded-lg text-xs font-bold border flex items-center justify-center space-x-1.5 transition ${
+                    prioritas === "RENDAH"
+                      ? "bg-blue-600 text-white border-blue-600 shadow-sm"
+                      : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-blue-50"
+                  }`}
+                >
+                  <span>🔵 Rendah (Inspeksi Rutin)</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Kategori Utama */}
             <div>
               <label className="text-xs font-bold text-slate-700 flex items-center space-x-1.5 mb-2">
                 <Wrench size={14} className="text-slate-500" />
@@ -328,6 +396,26 @@ export default function FormPelaporanPage() {
                     }`}
                   >
                     {kat}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Template Teks Cepat */}
+            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
+              <label className="text-[11px] font-bold text-slate-600 flex items-center space-x-1">
+                <Zap size={13} className="text-amber-500" />
+                <span>Klik Template Teks Cepat (Auto-Fill Text):</span>
+              </label>
+              <div className="flex flex-wrap gap-1.5">
+                {quickTexts.map((text, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => setPraOperasi(text)}
+                    className="text-[10px] bg-white border border-slate-300 hover:border-emerald-500 text-slate-700 px-2.5 py-1 rounded-md transition"
+                  >
+                    + {text}
                   </button>
                 ))}
               </div>
