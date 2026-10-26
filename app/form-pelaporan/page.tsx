@@ -25,13 +25,15 @@ export default function FormPelaporanPage() {
   const pathname = usePathname();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const today = new Date().toISOString().split("T")[0];
+const [tanggal, setTanggal] = useState("");
 
-  const [tanggal, setTanggal] = useState(today);
+useEffect(() => {
+  setTanggal(new Date().toISOString().split("T")[0]);
+}, []);
   const [nomorRtg, setNomorRtg] = useState("");
   const [lokasiBlok, setLokasiBlok] = useState("");
   const [kategori, setKategori] = useState("");
-  const [prioritas, setPrioritas] = useState("SEDANG");
+  const [prioritas, setPrioritas] = useState("MEDIUM P3");
   const [praOperasi, setPraOperasi] = useState("");
   const [pascaOperasi, setPascaOperasi] = useState("");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -79,7 +81,7 @@ export default function FormPelaporanPage() {
     if (rtgBlockMap[val]) {
       setLokasiBlok(rtgBlockMap[val]);
     } else if (val !== "") {
-      setLokasiBlok("Blok Ready - Bay Standard");
+      setLokasiBlok("BLOK A - Bay Standard");
     } else {
       setLokasiBlok("");
     }
@@ -108,13 +110,14 @@ export default function FormPelaporanPage() {
       tanggal,
       jam: new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) + " WIB",
       rtg: nomorRtg,
-      lokasi: lokasiBlok || "Blok Yard",
+      lokasi: lokasiBlok || "BLOK A",
       pelapor: "Supervisi Lapangan",
       praOperasi: praOperasi || "-",
       pascaOperasi: pascaOperasi || "-",
       kategori: kategori || "Kendala Umum",
       prioritas: prioritas,
-      status: "PERBAIKAN",
+      status: "MENUNGGU PENANGANAN",
+      teknisi: "Belum Ditugaskan",
     };
 
     const existingReports = JSON.parse(localStorage.getItem("rtg_reports") || "[]");
@@ -125,7 +128,7 @@ export default function FormPelaporanPage() {
     setNomorRtg("");
     setLokasiBlok("");
     setKategori("");
-    setPrioritas("SEDANG");
+    setPrioritas("MEDIUM P3");
     setPraOperasi("");
     setPascaOperasi("");
     setSelectedFiles([]);
@@ -150,6 +153,7 @@ export default function FormPelaporanPage() {
           </div>
         </div>
 
+        {/* Navigasi Terhubung ke Semua Halaman */}
         <nav className="flex items-center space-x-2 bg-[#082e2e] p-1.5 rounded-full text-xs shadow-inner">
           <Link
             href="/form-pelaporan"
@@ -167,9 +171,14 @@ export default function FormPelaporanPage() {
           >
             Dashboard Monitoring
           </Link>
-          <button className="px-5 py-2 text-slate-300 hover:text-white transition font-medium">
+          <Link
+            href="/penanganan-teknis"
+            className={`px-5 py-2 rounded-full transition font-semibold ${
+              pathname === "/penanganan-teknis" ? "bg-white text-[#0b3c3c] shadow" : "text-slate-300 hover:text-white"
+            }`}
+          >
             Penanganan Teknis
-          </button>
+          </Link>
         </nav>
 
         <div className="flex items-center space-x-4">
@@ -345,9 +354,9 @@ export default function FormPelaporanPage() {
               <div className="grid grid-cols-3 gap-3">
                 <button
                   type="button"
-                  onClick={() => setPrioritas("EMERGENCY")}
+                  onClick={() => setPrioritas("CRITICAL P1")}
                   className={`py-2 px-3 rounded-lg text-xs font-bold border flex items-center justify-center space-x-1.5 transition ${
-                    prioritas === "EMERGENCY"
+                    prioritas === "CRITICAL P1"
                       ? "bg-red-600 text-white border-red-600 shadow-sm animate-pulse"
                       : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-red-50"
                   }`}
@@ -356,9 +365,9 @@ export default function FormPelaporanPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setPrioritas("SEDANG")}
+                  onClick={() => setPrioritas("MEDIUM P3")}
                   className={`py-2 px-3 rounded-lg text-xs font-bold border flex items-center justify-center space-x-1.5 transition ${
-                    prioritas === "SEDANG"
+                    prioritas === "MEDIUM P3"
                       ? "bg-amber-500 text-white border-amber-500 shadow-sm"
                       : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-amber-50"
                   }`}
@@ -367,9 +376,9 @@ export default function FormPelaporanPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => setPrioritas("RENDAH")}
+                  onClick={() => setPrioritas("NORMAL P4")}
                   className={`py-2 px-3 rounded-lg text-xs font-bold border flex items-center justify-center space-x-1.5 transition ${
-                    prioritas === "RENDAH"
+                    prioritas === "NORMAL P4"
                       ? "bg-blue-600 text-white border-blue-600 shadow-sm"
                       : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-blue-50"
                   }`}
@@ -499,7 +508,7 @@ export default function FormPelaporanPage() {
               <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 flex items-start space-x-2.5 max-w-xl text-xs text-slate-600">
                 <Info size={18} className="text-blue-500 shrink-0 mt-0.5" />
                 <p>
-                  <strong className="text-slate-800">Catatan Otomatis:</strong> Laporan yang disubmit akan langsung menerbitkan Tiket Perbaikan ke Departemen Teknik.
+                  <strong className="text-slate-800">Catatan Otomatis:</strong> Laporan yang disubmit akan langsung Dilakukan Perbaikan ke Departemen Teknik.
                 </p>
               </div>
 

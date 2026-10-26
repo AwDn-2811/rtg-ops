@@ -78,7 +78,7 @@ export default function DashboardPage() {
     return {
       id: unitName,
       status: isReported ? "PERBAIKAN" : "NORMAL",
-      prioritas: reportData?.prioritas || "SEDANG",
+      prioritas: reportData?.prioritas || "MEDIUM P3",
       badge: isReported ? `A ${reportData?.prioritas || "Perlu tindakan"}` : undefined,
       sub: isReported ? `Tiket: ${reportData?.kategori || "Perlu Perbaikan"}` : "Tanpa laporan aktif",
     };
@@ -112,7 +112,7 @@ export default function DashboardPage() {
       "Nomor RTG": r.rtg,
       Lokasi: r.lokasi,
       Pelapor: r.pelapor,
-      Prioritas: r.prioritas || "SEDANG",
+      Prioritas: r.prioritas || "MEDIUM P3",
       Kategori: r.kategori,
       "Temuan Pra-Operasi": r.praOperasi,
       "Temuan Pasca-Operasi": r.pascaOperasi,
@@ -146,6 +146,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {/* Navigasi Terhubung ke Semua Halaman */}
         <nav className="flex items-center space-x-2 bg-[#082e2e] p-1.5 rounded-full text-xs shadow-inner">
           <Link
             href="/form-pelaporan"
@@ -163,9 +164,14 @@ export default function DashboardPage() {
           >
             Dashboard Monitoring
           </Link>
-          <button className="px-5 py-2 text-slate-300 hover:text-white transition font-medium">
+          <Link
+            href="/penanganan-teknis"
+            className={`px-5 py-2 rounded-full transition font-semibold ${
+              pathname === "/penanganan-teknis" ? "bg-white text-[#0b3c3c] shadow" : "text-slate-300 hover:text-white"
+            }`}
+          >
             Penanganan Teknis
-          </button>
+          </Link>
         </nav>
 
         <div className="flex items-center space-x-4">
@@ -301,7 +307,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Top Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-white p-4 rounded-xl border border-slate-200 flex justify-between items-start shadow-sm">
             <div>
               <p className="text-xs text-slate-500 font-medium">RTG Beroperasi Normal</p>
@@ -313,14 +319,6 @@ export default function DashboardPage() {
             <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg"><CheckCircle2 size={20} /></div>
           </div>
 
-          <div className="bg-white p-4 rounded-xl border border-slate-200 flex justify-between items-start shadow-sm">
-            <div>
-              <p className="text-xs text-slate-500 font-medium">RTG Perlu Perhatian</p>
-              <h3 className="text-2xl font-bold mt-1 text-slate-800">0 <span className="text-xs font-normal text-slate-500">unit</span></h3>
-              <p className="text-[11px] text-slate-400 mt-2">• Tanpa anomali ringan</p>
-            </div>
-            <div className="p-2 bg-slate-100 text-slate-400 rounded-lg"><AlertTriangle size={20} /></div>
-          </div>
 
           <div className="bg-white p-4 rounded-xl border border-slate-200 flex justify-between items-start shadow-sm">
             <div>
@@ -362,7 +360,7 @@ export default function DashboardPage() {
                 key={item.id} 
                 className={`p-3 rounded-lg border transition ${
                   item.status === "PERBAIKAN" 
-                    ? item.prioritas === "EMERGENCY"
+                    ? item.prioritas?.includes("P1")
                       ? "bg-red-100 border-red-500 text-red-900 animate-pulse"
                       : "bg-amber-50 border-amber-300 text-amber-900"
                     : "bg-slate-50 border-slate-200 hover:border-emerald-300"
@@ -372,7 +370,7 @@ export default function DashboardPage() {
                   <span className="font-bold text-sm text-slate-800">{item.id}</span>
                   <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
                     item.status === "PERBAIKAN" 
-                      ? item.prioritas === "EMERGENCY" ? "bg-red-600 text-white" : "bg-amber-200 text-amber-800"
+                      ? item.prioritas?.includes("P1") ? "bg-red-600 text-white" : "bg-amber-200 text-amber-800"
                       : "bg-emerald-100 text-emerald-700"
                   }`}>
                     {item.status}
@@ -521,13 +519,13 @@ export default function DashboardPage() {
                           </td>
                           <td className="py-3 px-3">
                             <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full ${
-                              item.prioritas === "EMERGENCY" 
+                              item.prioritas?.includes("P1") 
                                 ? "bg-red-600 text-white animate-pulse" 
-                                : item.prioritas === "RENDAH" 
+                                : item.prioritas?.includes("P4") 
                                 ? "bg-blue-100 text-blue-700" 
                                 : "bg-amber-100 text-amber-700"
                             }`}>
-                              {item.prioritas || "SEDANG"}
+                              {item.prioritas || "MEDIUM P3"}
                             </span>
                             <br />
                             <span className="text-[10px] text-slate-400">{item.kategori}</span>
@@ -603,7 +601,7 @@ export default function DashboardPage() {
                 </div>
                 <div>
                   <p className="text-slate-400">Tingkat Prioritas:</p>
-                  <p className="font-bold text-amber-600">{selectedReport.prioritas || "SEDANG"}</p>
+                  <p className="font-bold text-amber-600">{selectedReport.prioritas || "MEDIUM P3"}</p>
                 </div>
               </div>
 
