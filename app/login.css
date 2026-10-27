@@ -1,0 +1,328 @@
+
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+
+/* Semua variabel dan layout khusus login */
+.login-page {
+  --login-primary: #087fc1;
+  --login-primary-hover: #066da8;
+  --login-text: #102b49;
+
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+  padding: 32px 20px;
+
+  font-family: "Inter", Arial, sans-serif;
+  color: var(--login-text);
+
+  background-image: url("/images/bg-login.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+/* Reset dibatasi hanya dalam login */
+.login-page,
+.login-page *,
+.login-page *::before,
+.login-page *::after {
+  box-sizing: border-box;
+}
+
+.login-page h1,
+.login-page p {
+  margin: 0;
+}
+
+.login-page button,
+.login-page input {
+  font: inherit;
+}
+
+/* Background */
+.login-page .background-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(8, 30, 48, 0.12);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+
+/* Login Card */
+.login-page .login-card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 420px;
+  padding: 30px 28px 32px;
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  border-radius: 14px;
+  background: rgba(239, 247, 252, 0.76);
+  box-shadow: 0 12px 40px rgba(11, 37, 58, 0.18);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+}
+
+/* Brand */
+.login-page .brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.login-page .brand-logo {
+  width: 145px;
+  height: 65px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-page .brand-logo img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.login-page .brand-info {
+  width: 100%;
+  min-width: 0;
+  text-align: center;
+}
+
+.login-page .brand-info h1 {
+  font-size: 28px;
+  font-weight: 800;
+  letter-spacing: -0.8px;
+  line-height: 1.25;
+  color: #102b49;
+}
+
+.login-page .brand h1 {
+  font-size: 25px;
+  font-weight: 800;
+  letter-spacing: -0.8px;
+  line-height: 1.25;
+}
+
+.login-page .brand-subtitle {
+  margin-top: 7px;
+  font-size: 9px;
+  letter-spacing: 1.2px;
+  line-height: 1.6;
+  font-weight: 600;
+  color: #344c60;
+}
+
+/* Inputs */
+.login-page .input-group {
+  height: 39px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.95);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.38);
+  box-shadow: 0 2px 7px rgba(31, 60, 79, 0.06);
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s,
+    background 0.2s;
+}
+
+.login-page .input-group:focus-within {
+  border-color: #168bca;
+  background: rgba(255, 255, 255, 0.7);
+  box-shadow: 0 0 0 3px rgba(8, 127, 193, 0.12);
+}
+
+.login-page .input-icon {
+  flex-shrink: 0;
+  color: #526273;
+}
+
+.login-page .input-group input {
+  min-width: 0;
+  flex: 1;
+  height: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: #17344e;
+  font-size: 13px;
+}
+
+.login-page .input-group input::placeholder {
+  color: #65717c;
+  opacity: 1;
+}
+
+.login-page .password-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: #526273;
+  cursor: pointer;
+  padding: 3px;
+}
+
+/* Form Options */
+.login-page .form-options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 1px 0 19px;
+  font-size: 11px;
+}
+
+.login-page .remember-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.login-page .remember-option input {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--login-primary);
+  cursor: pointer;
+}
+
+.login-page .forgot-link {
+  color: #172e47;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.login-page .forgot-link:hover,
+.login-page .register-text a:hover {
+  text-decoration: underline;
+}
+
+/* Login Button */
+.login-page .login-button {
+  width: 100%;
+  height: 41px;
+  border: none;
+  border-radius: 7px;
+  background: var(--login-primary);
+  color: white;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 0.2s,
+    transform 0.2s;
+}
+
+.login-page .login-button:hover {
+  background: var(--login-primary-hover);
+}
+
+.login-page .login-button:active {
+  transform: scale(0.99);
+}
+
+/* Register */
+.login-page .register-text {
+  margin-top: 20px;
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #344c60;
+}
+
+.login-page .register-text a {
+  color: #102b49;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+/* Footer */
+.login-page .page-footer {
+  position: absolute;
+  bottom: 12px;
+  z-index: 1;
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 9px;
+  letter-spacing: 1px;
+  text-align: center;
+}
+
+/* Mobile Responsive */
+@media (max-width: 480px) {
+  .login-page {
+    padding: 24px 18px;
+    background-position: center;
+  }
+
+  .login-page .brand {
+    gap: 12px;
+    margin-bottom: 22px;
+  }
+
+  .login-page .brand-logo {
+    width: 78px;
+    height: 78px;
+  }
+
+  .login-page .brand-info h1 {
+    font-size: 23px;
+  }
+
+  .login-page .brand-subtitle {
+    font-size: 8px;
+    letter-spacing: 0.7px;
+  }
+
+  .login-page .login-card {
+    max-width: 360px;
+    padding: 28px 22px;
+  }
+
+  .login-page .brand h1 {
+    font-size: 26px;
+  }
+
+  .login-page .input-group {
+    height: 44px;
+  }
+
+  .login-page .form-options {
+    font-size: 11px;
+  }
+
+  .login-page .login-button {
+    height: 45px;
+  }
+}
+
+/* Landscape Mobile */
+@media (max-height: 520px) and (orientation: landscape) {
+  .login-page {
+    align-items: flex-start;
+    overflow-y: auto;
+  }
+
+  .login-page .login-card {
+    margin: 10px 0 28px;
+  }
+}
