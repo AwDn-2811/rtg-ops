@@ -261,11 +261,11 @@ export default function DashboardPage() {
                 </div>
 
                 <button
-                  onClick={() => alert("Ganti shift atau logout supervisi")}
+                  onClick={() => router.push("/")}
                   className="w-full mt-2 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-xs font-semibold flex items-center justify-center space-x-1.5 transition"
                 >
                   <LogOut size={14} />
-                  <span>Ganti Shift / Logout</span>
+                  <span>Ganti Shift / Logout</span> 
                 </button>
               </div>
             )}

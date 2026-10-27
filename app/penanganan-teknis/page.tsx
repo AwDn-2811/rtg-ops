@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
   Bell,
   User,
@@ -47,6 +47,7 @@ interface Report {
 }
 
 export default function PenangananTeknisPage() {
+  const router = useRouter();
   const pathname = usePathname();
   const [reports, setReports] = useState<Report[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
@@ -366,7 +367,7 @@ export default function PenangananTeknisPage() {
                 </div>
 
                 <button
-                  onClick={() => alert("Ganti shift atau logout supervisi")}
+                  onClick={() => router.push("/")}
                   className="w-full mt-2 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-xs font-semibold flex items-center justify-center space-x-1.5 transition"
                 >
                   <LogOut size={14} />
