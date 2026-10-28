@@ -10,7 +10,6 @@ import {
   Eye,
   EyeOff,
 } from "lucide-react";
-import "./globals.css";
 
 export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
