@@ -24,9 +24,9 @@ export default function LoginPage() {
   //menggunakan useRouter untuk navigasi fungsi login
   const router = useRouter();
 
-useEffect(() => {
-  setYear(new Date().getFullYear());
-}, []);
+  useEffect(() => {
+    setYear(new Date().getFullYear());
+  }, []);
 
   function handleLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -137,7 +137,7 @@ useEffect(() => {
       </section>
 
       <footer className="page-footer">
-        PORTWAY © {year ?? "2026"} · PORT OPERATIONS
+        PORTWAY © {year ?? ""} · PORT OPERATIONS
       </footer>
     </main>
   );

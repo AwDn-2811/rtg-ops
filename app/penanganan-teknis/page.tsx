@@ -410,7 +410,7 @@ export default function PenangananTeknisPage() {
               className="bg-[#0e5c75] hover:bg-[#0b485c] text-white px-4 py-2 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition shadow-sm"
             >
               <Plus size={16} />
-              <span>+ Tambah Work Order Manual</span>
+              <span>Tambah Work Order Manual</span>
             </button>
           </div>
         </div>

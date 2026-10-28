@@ -278,7 +278,7 @@ export default function DashboardPage() {
         <div className="bg-[#0f4c5c] text-white p-6 rounded-xl relative overflow-hidden shadow-sm">
           <div className="inline-flex items-center space-x-2 bg-[#175d70] px-3 py-1 rounded-full text-xs text-emerald-300 mb-3">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-            <span>LIVE SINKRONISASI SISTEM TOS • DERMAGA PETIKEMAS</span>
+            <span>LIVE MONITORING RTG • DERMAGA PETIKEMAS</span>
           </div>
           <div className="flex justify-between items-end">
             <div>
@@ -442,7 +442,7 @@ export default function DashboardPage() {
 
             <div className="flex justify-between items-center text-[11px] text-slate-500 pt-3 border-t border-slate-100 mt-2">
               <span>• Total: {reports.length} Laporan</span>
-              <span className="font-medium text-slate-700">Terselesaikan: 89%</span>
+              <span className="font-medium text-slate-700">Terselesaikan: 0%</span>
             </div>
           </div>
 
