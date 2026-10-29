@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import * as XLSX from "xlsx";
+import * as XLSX from "xlsx-js-style";
 import { 
   Bell, 
   User, 
@@ -32,6 +32,7 @@ interface Report {
   kategori: string;
   prioritas?: string;
   status: string;
+  teknisi?: string;
 }
 
 export default function DashboardPage() {
@@ -100,12 +101,30 @@ export default function DashboardPage() {
   const maxVal = Math.max(...Object.values(rtgCounts), 5);
 
   const exportToExcel = () => {
-    if (reports.length === 0) {
+    let dataToExport: Report[];
+
+    try {
+      const saved = localStorage.getItem("rtg_reports");
+      const parsed: unknown = saved ? JSON.parse(saved) : [];
+
+      if (!Array.isArray(parsed)) {
+        alert("Format data laporan tidak valid.");
+        return;
+      }
+
+      dataToExport = parsed as Report[];
+    } catch (error) {
+      console.error("Gagal membaca data untuk ekspor:", error);
+      alert("Data laporan gagal dibaca.");
+      return;
+    }
+
+    if (dataToExport.length === 0) {
       alert("Belum ada data laporan untuk diekspor!");
       return;
     }
 
-    const excelData = reports.map((r, idx) => ({
+    const excelData = dataToExport.map((r, idx) => ({
       No: idx + 1,
       Tanggal: r.tanggal,
       Jam: r.jam,
@@ -117,12 +136,131 @@ export default function DashboardPage() {
       "Temuan Pra-Operasi": r.praOperasi,
       "Temuan Pasca-Operasi": r.pascaOperasi,
       Status: r.status,
+      "Nama PIC / Penanggung Jawab": r.teknisi?.trim() || "Belum Ditugaskan",
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(excelData);
+    const columnWidths = [
+      6,  // No
+      14, // Tanggal
+      12, // Jam
+      14, // Nomor RTG
+      16, // Lokasi
+      23, // Pelapor
+      31, // Nama PIC / Penanggung Jawab
+      18, // Prioritas
+      25, // Kategori
+      40, // Temuan Pra-Operasi
+      40, // Temuan Pasca-Operasi
+      22, // Status
+    ];
+
+    worksheet["!cols"] = columnWidths.map(
+      (wch) => ({ wch })
+    );
+
+    // Mengatur Wrap Text dan tampilan setiap sel Excel
+    const range = XLSX.utils.decode_range(
+      worksheet["!ref"]!
+    );
+
+    for (let row = range.s.r; row <= range.e.r; row++) {
+      for (let col = range.s.c; col <= range.e.c; col++) {
+        const address = XLSX.utils.encode_cell({
+          r: row,
+          c: col,
+        });
+
+        const cell = worksheet[address];
+        if (!cell) continue;
+
+        const header = row === 0;
+
+        cell.s = {
+          font: {
+            name: "Calibri",
+            sz: header ? 11 : 10,
+            bold: header,
+            color: {
+              rgb: header ? "FFFFFF" : "243447",
+            },
+          },
+
+          fill: {
+            fgColor: {
+              rgb: header
+                ? "0B3C3C"
+                : row % 2 === 0
+                ? "F1F7F8"
+                : "FFFFFF",
+            },
+          },
+
+          alignment: {
+            wrapText: true,
+            vertical: header ? "center" : "top",
+            horizontal:
+              header || col === 0 ? "center" : "left",
+          },
+
+          border: {
+            bottom: {
+              style: "thin",
+              color: { rgb: "DCE5E8" },
+            },
+          },
+        };
+      }
+    }
+
+    // Menghitung perkiraan tinggi baris berdasarkan isi
+    worksheet["!rows"] = [
+      { hpt: 36 }, // Tinggi header
+
+      ...excelData.map((record) => {
+        const values = Object.values(record);
+
+        const neededLines = Math.max(
+          1,
+          ...values.map((value, col) => {
+            const text = String(value ?? "");
+
+            const estimatedCharsPerLine = Math.max(
+              columnWidths[col] - 4,
+              1
+            );
+
+            return text.split(/\r?\n/).reduce(
+              (count, line) => {
+                return count + Math.max(
+                  1,
+                  Math.ceil(
+                    line.length / estimatedCharsPerLine
+                  )
+                );
+              },
+              0
+            );
+          })
+        );
+
+        return {
+          hpt: Math.min(
+            400,
+            Math.max(27, neededLines * 17 + 9)
+          ),
+        };
+      }),
+    ];
+
+    // aktifkan filter header Excel
+    worksheet["!autofilter"] = {
+      ref: worksheet["!ref"]!,
+    };
+
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Rekap Laporan RTG");
-    XLSX.writeFile(workbook, `Rekap_Evaluasi_RTG_${new Date().toISOString().split("T")[0]}.xlsx`);
+    XLSX.writeFile(workbook, `Rekap_Evaluasi_RTG_${new Date().toISOString().split("T")[0]}.xlsx`, { cellStyles: true });
   };
 
   const clearData = () => {
