@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import {
@@ -19,6 +19,12 @@ import {
   Camera,
   Check,
   Edit3,
+  ImageIcon,
+  Maximize2,
+  Wrench,
+  UploadCloud,
+  Info,
+  ShieldCheck,
 } from "lucide-react";
 
 interface Report {
@@ -41,9 +47,10 @@ interface Report {
   queueTime?: string;
   progres?: number;
   fotoBukti?: string[];
+  fotoSelesai?: string[];
   selectedFiles?: string[];
-  namaFoto?: string;
-  ukuranFoto?: string;
+  catatanPerbaikan?: string;
+  catatanSelesai?: string;
 }
 
 export default function PenangananTeknisPage() {
@@ -64,6 +71,22 @@ export default function PenangananTeknisPage() {
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [namaTeknisiInput, setNamaTeknisiInput] = useState("");
 
+  // State Modal Update Log (Sesuai Desain Rujukan 1)
+  const [showUpdateLogModal, setShowUpdateLogModal] = useState(false);
+  const [selectedReportForLog, setSelectedReportForLog] = useState<Report | null>(null);
+  const [progresVal, setProgresVal] = useState(25);
+  const [catatanInput, setCatatanInput] = useState("");
+
+  // State Modal Selesaikan Work Order (Sesuai Desain Rujukan 2)
+  const [showSelesaiModal, setShowSelesaiModal] = useState(false);
+  const [selectedReportForSelesai, setSelectedReportForSelesai] = useState<Report | null>(null);
+  const [catatanSelesaiInput, setCatatanSelesaiInput] = useState("");
+  const [fotoSelesaiFiles, setFotoSelesaiFiles] = useState<File[]>([]);
+  const fileInputSelesaiRef = useRef<HTMLInputElement>(null);
+
+  // State Modal Preview Gambar
+  const [activeImagePreview, setActiveImagePreview] = useState<string | null>(null);
+
   // State Modal Work Order Manual Baru
   const [showAddWOModal, setShowAddWOModal] = useState(false);
   const [newRtg, setNewRtg] = useState("");
@@ -72,7 +95,7 @@ export default function PenangananTeknisPage() {
   const [newPrioritas, setNewPrioritas] = useState("CRITICAL P1");
   const [newDeskripsi, setNewDeskripsi] = useState("");
 
-  // Membaca Data Murni dari LocalStorage (Kosong jika belum ada pelaporan)
+  // Membaca Data Murni dari LocalStorage
   const loadData = () => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("rtg_reports");
@@ -108,7 +131,7 @@ export default function PenangananTeknisPage() {
     setSelectedTimFilter("SEMUA");
   };
 
-  // Filter Data Berdasarkan Form Pelaporan / Input
+  // Filter Data
   const filteredReports = reports.filter((r) => {
     const matchesSearch =
       r.rtg.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -138,7 +161,7 @@ export default function PenangananTeknisPage() {
   const tiketDikerjakan = filteredReports.filter((r) => r.status === "SEDANG DIKERJAKAN");
   const tiketSelesai = filteredReports.filter((r) => r.status === "SELESAI");
 
-  // Perhitungan Ringkasan Statistik Real-Time (Murni Dari Data Input)
+  // Ringkasan Statistik
   const totalTiketAktif = tiketMenunggu.length + tiketDikerjakan.length;
 
   const butuhTindakanCepat = reports.filter(
@@ -182,23 +205,95 @@ export default function PenangananTeknisPage() {
     setShowDetailModal(false);
   };
 
-  // Aksi Penyelesaian Tiket
-  const handleSelesaikanTiket = (reportId: number) => {
-    const jamSekarang = new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) + " WIB";
+  // Handler Buka Modal Update Log
+  const handleOpenUpdateLog = (report: Report) => {
+    setSelectedReportForLog(report);
+    setProgresVal(report.progres || 25);
+    setCatatanInput(report.catatanPerbaikan || "");
+    setShowUpdateLogModal(true);
+  };
+
+  // Handler Simpan Update Log
+  const handleSaveUpdateLog = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedReportForLog) return;
+
     const updated = reports.map((r) => {
-      if (r.id === reportId) {
+      if (r.id === selectedReportForLog.id) {
         return {
           ...r,
-          status: "SELESAI",
-          waktuSelesai: jamSekarang,
-          durasiMenit: r.durasiMenit || 30,
-          progres: 100,
+          progres: progresVal,
+          catatanPerbaikan: catatanInput,
         };
       }
       return r;
     });
+
     saveReports(updated);
-    setShowDetailModal(false);
+    setShowUpdateLogModal(false);
+    setSelectedReportForLog(null);
+    setCatatanInput("");
+  };
+
+  // Handler Buka Modal Selesaikan Work Order
+  const handleOpenSelesaikanModal = (report: Report) => {
+    setSelectedReportForSelesai(report);
+    setCatatanSelesaiInput(report.catatanSelesai || "");
+    setFotoSelesaiFiles([]);
+    setShowSelesaiModal(true);
+  };
+
+  // Handler File Upload Foto Selesai
+  const handleFotoSelesaiChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) {
+      const filesArr = Array.from(e.target.files);
+      setFotoSelesaiFiles((prev) => [...prev, ...filesArr].slice(0, 3));
+    }
+  };
+
+  // Handler Simpan Penyelesaian Work Order
+  const handleConfirmSelesaikan = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedReportForSelesai) return;
+
+    try {
+      // Process file conversion to Base64
+      const fotoBase64Promises = fotoSelesaiFiles.map((file) => {
+        return new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = (err) => reject(err);
+          reader.readAsDataURL(file);
+        });
+      });
+
+      const fotoBase64Array = await Promise.all(fotoBase64Promises);
+      const jamSekarang = new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) + " WIB";
+
+      const updated = reports.map((r) => {
+        if (r.id === selectedReportForSelesai.id) {
+          return {
+            ...r,
+            status: "SELESAI",
+            waktuSelesai: jamSekarang,
+            durasiMenit: r.durasiMenit || 30,
+            progres: 100,
+            catatanSelesai: catatanSelesaiInput,
+            fotoSelesai: fotoBase64Array.length > 0 ? fotoBase64Array : r.fotoBukti,
+          };
+        }
+        return r;
+      });
+
+      saveReports(updated);
+      setShowSelesaiModal(false);
+      setSelectedReportForSelesai(null);
+      setCatatanSelesaiInput("");
+      setFotoSelesaiFiles([]);
+    } catch (err) {
+      console.error("Gagal menyimpan foto bukti selesai:", err);
+      alert("Terjadi kesalahan saat mengunggah foto bukti.");
+    }
   };
 
   // Submit Work Order Manual
@@ -415,7 +510,7 @@ export default function PenangananTeknisPage() {
           </div>
         </div>
 
-        {/* Top Summary Cards (Statistik Awal Berjumlah 0) */}
+        {/* Top Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-white p-4 rounded-xl border border-slate-200 flex justify-between items-start shadow-sm">
             <div>
@@ -491,10 +586,9 @@ export default function PenangananTeknisPage() {
               className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none cursor-pointer"
             >
               <option value="SEMUA">Tingkat Urgensi: Semua</option>
-              <option value="CRITICAL">Critical P1</option>
-              <option value="HIGH">High P2</option>
-              <option value="MEDIUM">Medium P3</option>
-              <option value="NORMAL">Normal P4</option>
+              <option value="HIGH">High P1</option>
+              <option value="MEDIUM">Medium P2</option>
+              <option value="NORMAL">Low P3</option>
             </select>
 
             <select
@@ -526,7 +620,7 @@ export default function PenangananTeknisPage() {
         {/* Kanban Board Layout */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* KOLOM 1: MENUNGGU PENANGANAN */}
-          <div className="bg-slate-200/50 p-4 rounded-xl border border-slate-200 flex flex-col min-h-450px">
+          <div className="bg-slate-200/50 p-4 rounded-xl border border-slate-200 flex flex-col min-h-[450px]">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-red-500"></span>
@@ -545,55 +639,91 @@ export default function PenangananTeknisPage() {
                   <span className="text-[10px] text-slate-400 mt-1">Data akan muncul setelah mengisi Form Pelaporan.</span>
                 </div>
               ) : (
-                tiketMenunggu.map((item) => (
-                  <div key={item.id} className="bg-white rounded-xl p-4 shadow-sm border border-slate-200 space-y-2.5">
-                    <div className="flex justify-between items-start">
-                      <span className={`text-[10px] font-black px-2 py-0.5 rounded ${
-                        item.prioritas?.includes("CRITICAL") || item.prioritas?.includes("KRITIS")
-                          ? "bg-red-100 text-red-700 border border-red-200"
-                          : item.prioritas?.includes("HIGH")
-                          ? "bg-amber-100 text-amber-800"
-                          : item.prioritas?.includes("MEDIUM")
-                          ? "bg-amber-50 text-amber-700 border border-amber-200"
-                          : "bg-slate-100 text-slate-600"
-                      }`}>
-                        {item.prioritas || "MEDIUM P3"}
-                      </span>
-                      <span className="text-[11px] text-slate-400 font-medium">Queue: {item.queueTime || "Baru saja"}</span>
-                    </div>
+                tiketMenunggu.map((item) => {
+                  const hasPhotos = item.fotoBukti && item.fotoBukti.length > 0;
+                  const hasFiles = item.selectedFiles && item.selectedFiles.length > 0;
 
-                    <div>
-                      <div className="flex items-baseline space-x-2">
-                        <span className="font-extrabold text-sm text-slate-900">{item.rtg}</span>
-                        <span className="font-bold text-xs text-slate-800">• {item.kategori}</span>
+                  return (
+                    <div key={item.id} className="bg-white rounded-xl p-4 shadow-sm border border-slate-200 space-y-2.5">
+                      <div className="flex justify-between items-start">
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded ${
+                          item.prioritas?.includes("CRITICAL") || item.prioritas?.includes("KRITIS")
+                            ? "bg-red-100 text-red-700 border border-red-200"
+                            : item.prioritas?.includes("HIGH")
+                            ? "bg-amber-100 text-amber-800"
+                            : item.prioritas?.includes("MEDIUM")
+                            ? "bg-amber-50 text-amber-700 border border-amber-200"
+                            : "bg-slate-100 text-slate-600"
+                        }`}>
+                          {item.prioritas || "MEDIUM P3"}
+                        </span>
+                        <span className="text-[11px] text-slate-400 font-medium">Queue: {item.queueTime || "Baru saja"}</span>
                       </div>
-                      <p className="text-slate-500 text-[11px] mt-1 line-clamp-2 leading-relaxed">
-                        {item.praOperasi !== "-" ? item.praOperasi : item.pascaOperasi}
-                      </p>
-                    </div>
 
-                    <div className="flex justify-between items-center pt-2 border-t border-slate-100">
-                      <span className="text-[10px] text-slate-500 font-semibold flex items-center space-x-1">
-                        <span>📍 {item.lokasi}</span>
-                      </span>
-                      <button
-                        onClick={() => {
-                          setSelectedReport(item);
-                          setShowDetailModal(true);
-                        }}
-                        className="px-3.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold transition"
-                      >
-                        Tugaskan
-                      </button>
+                      <div>
+                        <div className="flex items-baseline space-x-2">
+                          <span className="font-extrabold text-sm text-slate-900">{item.rtg}</span>
+                          <span className="font-bold text-xs text-slate-800">• {item.kategori}</span>
+                        </div>
+                        <p className="text-slate-500 text-[11px] mt-1 line-clamp-2 leading-relaxed">
+                          {item.praOperasi !== "-" ? item.praOperasi : item.pascaOperasi}
+                        </p>
+                      </div>
+
+                      {/* TAMPILAN GAMBAR BUKTI */}
+                      {hasPhotos ? (
+                        <div className="bg-slate-50 p-2 rounded-lg border border-slate-200 space-y-1">
+                          <div className="flex items-center justify-between text-[10px] font-bold text-slate-600">
+                            <span className="flex items-center space-x-1">
+                              <Camera size={12} className="text-emerald-600" />
+                              <span>Bukti Foto Kerusakan ({item.fotoBukti?.length})</span>
+                            </span>
+                          </div>
+                          <div className="flex gap-1.5 overflow-x-auto pt-1">
+                            {item.fotoBukti?.map((imgSrc, imgIdx) => (
+                              <div
+                                key={imgIdx}
+                                onClick={() => setActiveImagePreview(imgSrc)}
+                                className="relative group w-12 h-12 rounded overflow-hidden border border-slate-200 cursor-pointer shrink-0 bg-slate-200"
+                              >
+                                <img src={imgSrc} alt="Bukti" className="w-full h-full object-cover group-hover:scale-105 transition" />
+                                <div className="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white">
+                                  <Maximize2 size={10} />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : hasFiles ? (
+                        <div className="bg-slate-50 p-2 rounded-lg border border-slate-200 flex items-center space-x-2">
+                          <ImageIcon size={16} className="text-slate-500 shrink-0" />
+                          <span className="text-[10px] font-bold text-slate-600 truncate">{item.selectedFiles?.join(", ")}</span>
+                        </div>
+                      ) : null}
+
+                      <div className="flex justify-between items-center pt-2 border-t border-slate-100">
+                        <span className="text-[10px] text-slate-500 font-semibold flex items-center space-x-1">
+                          <span>📍 {item.lokasi}</span>
+                        </span>
+                        <button
+                          onClick={() => {
+                            setSelectedReport(item);
+                            setShowDetailModal(true);
+                          }}
+                          className="px-3.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold transition"
+                        >
+                          Tugaskan
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>
 
           {/* KOLOM 2: SEDANG DIKERJAKAN */}
-          <div className="bg-slate-200/50 p-4 rounded-xl border border-slate-200 flex flex-col min-h-450px">
+          <div className="bg-slate-200/50 p-4 rounded-xl border border-slate-200 flex flex-col min-h-[450px]">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
@@ -611,66 +741,93 @@ export default function PenangananTeknisPage() {
                   <span>Tidak ada unit sedang dikerjakan.</span>
                 </div>
               ) : (
-                tiketDikerjakan.map((item) => (
-                  <div key={item.id} className="bg-white rounded-xl p-4 shadow-sm border border-slate-200 space-y-3">
-                    <div className="flex justify-between items-start">
-                      <span className={`text-[10px] font-black px-2 py-0.5 rounded ${
-                        item.prioritas?.includes("KRITIS") || item.prioritas?.includes("CRITICAL")
-                          ? "bg-red-100 text-red-700"
-                          : "bg-blue-100 text-blue-800"
-                      }`}>
-                        {item.prioritas || "HIGH P2"} • AKTIF
-                      </span>
-                      <div className="text-right">
-                        <span className="text-[11px] text-slate-500 font-medium">
-                          ⏱ Mulai: {item.waktuMulai || "08:00"}
+                tiketDikerjakan.map((item) => {
+                  const hasPhotos = item.fotoBukti && item.fotoBukti.length > 0;
+
+                  return (
+                    <div key={item.id} className="bg-white rounded-xl p-4 shadow-sm border border-slate-200 space-y-3">
+                      <div className="flex justify-between items-start">
+                        <span className={`text-[10px] font-black px-2 py-0.5 rounded ${
+                          item.prioritas?.includes("KRITIS") || item.prioritas?.includes("CRITICAL")
+                            ? "bg-red-100 text-red-700"
+                            : "bg-blue-100 text-blue-800"
+                        }`}>
+                          {item.prioritas || "HIGH P2"} • AKTIF
                         </span>
-                        <div className="bg-blue-100 text-blue-800 font-bold text-[10px] px-2 py-0.5 rounded mt-1">
-                          {item.lokasi}
+                        <div className="text-right">
+                          <span className="text-[11px] text-slate-500 font-medium">
+                            ⏱ Mulai: {item.waktuMulai || "08:00"}
+                          </span>
+                          <div className="bg-blue-100 text-blue-800 font-bold text-[10px] px-2 py-0.5 rounded mt-1">
+                            {item.lokasi}
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div>
-                      <span className="font-extrabold text-sm text-slate-900 block">{item.rtg}</span>
-                      <h4 className="font-bold text-xs text-slate-800 mt-0.5">{item.kategori}</h4>
-                      <p className="text-slate-500 text-[11px] mt-1 line-clamp-2">{item.praOperasi}</p>
-                    </div>
-
-                    <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100 space-y-1 text-[11px]">
-                      <div className="flex justify-between text-slate-600">
-                        <span>TEKNISI BERTUGAS</span>
+                      <div>
+                        <span className="font-extrabold text-sm text-slate-900 block">{item.rtg}</span>
+                        <h4 className="font-bold text-xs text-slate-800 mt-0.5">{item.kategori}</h4>
+                        <p className="text-slate-500 text-[11px] mt-1 line-clamp-2">{item.praOperasi}</p>
                       </div>
-                      <div className="font-bold text-slate-800">
-                        <span>{item.teknisi || "Belum Ditugaskan"}</span>
+
+                      {/* Preview foto saat sedang dikerjakan */}
+                      {hasPhotos && (
+                        <div className="bg-slate-50 p-2 rounded-lg border border-slate-200 flex items-center space-x-2">
+                          <div className="w-10 h-10 rounded overflow-hidden border border-slate-200 shrink-0 bg-slate-200">
+                            <img src={item.fotoBukti?.[0]} alt="Bukti" className="w-full h-full object-cover" />
+                          </div>
+                          <button
+                            onClick={() => setActiveImagePreview(item.fotoBukti?.[0] || null)}
+                            className="text-[10px] text-blue-600 underline font-semibold"
+                          >
+                            Lihat Foto Kerusakan ({item.fotoBukti?.length})
+                          </button>
+                        </div>
+                      )}
+
+                      {/* CATATAN LOG ACTION JIKA SUDAH DIISI */}
+                      {item.catatanPerbaikan && (
+                        <div className="bg-blue-50/70 p-2 rounded-lg border border-blue-200/60 text-[11px]">
+                          <span className="font-bold text-blue-800 block mb-0.5">📝 Log Catatan Terbaru:</span>
+                          <p className="text-blue-900">{item.catatanPerbaikan}</p>
+                        </div>
+                      )}
+
+                      <div className="bg-slate-50 p-2.5 rounded-lg border border-slate-100 space-y-1 text-[11px]">
+                        <div className="flex justify-between text-slate-600">
+                          <span>TEKNISI BERTUGAS</span>
+                        </div>
+                        <div className="font-bold text-slate-800">
+                          <span>{item.teknisi || "Belum Ditugaskan"}</span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-1">
+                        <button
+                          onClick={() => handleOpenUpdateLog(item)}
+                          className="px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-xs font-semibold transition flex items-center space-x-1"
+                        >
+                          <Edit3 size={13} />
+                          <span>Update Log</span>
+                        </button>
+
+                        <button
+                          onClick={() => handleOpenSelesaikanModal(item)}
+                          className="px-4 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold transition shadow-sm flex items-center space-x-1"
+                        >
+                          <CheckCircle2 size={13} />
+                          <span>Selesaikan</span>
+                        </button>
                       </div>
                     </div>
-
-                    <div className="flex items-center justify-between pt-1">
-                      <button
-                        onClick={() => alert(`Log update untuk ${item.rtg}`)}
-                        className="px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-xs font-semibold transition flex items-center space-x-1"
-                      >
-                        <Edit3 size={13} />
-                        <span>Update Log</span>
-                      </button>
-
-                      <button
-                        onClick={() => handleSelesaikanTiket(item.id)}
-                        className="px-4 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-lg text-xs font-semibold transition shadow-sm flex items-center space-x-1"
-                      >
-                        <CheckCircle2 size={13} />
-                        <span>Selesaikan</span>
-                      </button>
-                    </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
           </div>
 
           {/* KOLOM 3: SELESAI HARI INI */}
-          <div className="bg-slate-200/50 p-4 rounded-xl border border-slate-200 flex flex-col min-h-450px">
+          <div className="bg-slate-200/50 p-4 rounded-xl border border-slate-200 flex flex-col min-h-[450px]">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
@@ -714,16 +871,22 @@ export default function PenangananTeknisPage() {
                       <p className="text-slate-500 text-[11px] mt-1 line-clamp-2">{item.praOperasi}</p>
                     </div>
 
-                    {((item.fotoBukti && item.fotoBukti.length > 0) || (item.selectedFiles && item.selectedFiles.length > 0)) && (
+                    {/* MENAMPILKAN CATATAN HASIL PERBAIKAN PADA TIKET SELESAI */}
+                    {item.catatanSelesai && (
+                      <div className="bg-emerald-50/80 p-2.5 rounded-lg border border-emerald-200/80 text-[11px]">
+                        <span className="font-bold text-emerald-800 flex items-center space-x-1 mb-0.5">
+                          <Wrench size={12} />
+                          <span>Tindakan Perbaikan Teknis:</span>
+                        </span>
+                        <p className="text-emerald-900 leading-tight">{item.catatanSelesai}</p>
+                      </div>
+                    )}
+
+                    {((item.fotoSelesai && item.fotoSelesai.length > 0) || (item.fotoBukti && item.fotoBukti.length > 0)) && (
                       <div className="bg-slate-50 p-2 rounded-lg border border-slate-200 flex items-center space-x-2">
-                        <div className="w-8 h-8 bg-slate-200 rounded flex items-center justify-center text-slate-500 shrink-0">
-                          <Camera size={16} />
-                        </div>
+                        <Camera size={16} className="text-slate-500 shrink-0" />
                         <div className="overflow-hidden">
                           <p className="text-[10px] font-bold text-slate-700 truncate">✓ Bukti Foto Terlampir</p>
-                          <p className="text-[9px] text-slate-400 truncate">
-                            {item.namaFoto || "Lampiran Kerusakan"}
-                          </p>
                         </div>
                       </div>
                     )}
@@ -751,7 +914,7 @@ export default function PenangananTeknisPage() {
       {/* MODAL 1: DETAIL TIKET & PENUGASAN */}
       {showDetailModal && selectedReport && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
               <div>
                 <span className="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded">
@@ -793,6 +956,39 @@ export default function PenangananTeknisPage() {
                 </p>
               </div>
 
+              {/* FOTO BUKTI DI DALAM MODAL DETAIL */}
+              {selectedReport.fotoBukti && selectedReport.fotoBukti.length > 0 && (
+                <div>
+                  <p className="font-bold text-slate-700 mb-1 flex items-center space-x-1">
+                    <Camera size={14} className="text-emerald-600" />
+                    <span>Lampiran Gambar Kerusakan ({selectedReport.fotoBukti.length}):</span>
+                  </p>
+                  <div className="grid grid-cols-3 gap-2 bg-slate-50 p-2 rounded-lg border border-slate-200">
+                    {selectedReport.fotoBukti.map((imgSrc, idx) => (
+                      <div
+                        key={idx}
+                        onClick={() => setActiveImagePreview(imgSrc)}
+                        className="relative group h-20 rounded-lg overflow-hidden border border-slate-300 cursor-pointer bg-slate-200"
+                      >
+                        <img src={imgSrc} alt={`Bukti ${idx}`} className="w-full h-full object-cover group-hover:scale-105 transition" />
+                        <div className="absolute inset-0 bg-slate-900/30 opacity-0 group-hover:opacity-100 transition flex items-center justify-center text-white">
+                          <Maximize2 size={14} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {selectedReport.catatanSelesai && (
+                <div>
+                  <p className="font-bold text-slate-700 mb-1">Catatan Akhir Perbaikan:</p>
+                  <p className="p-3 bg-emerald-50 text-emerald-800 rounded-lg border border-emerald-200">
+                    {selectedReport.catatanSelesai}
+                  </p>
+                </div>
+              )}
+
               {selectedReport.status !== "SELESAI" && (
                 <div className="pt-2 border-t border-slate-100">
                   <label className="font-bold text-slate-700 block mb-1">Tugaskan Teknisi Penanggung Jawab:</label>
@@ -827,7 +1023,279 @@ export default function PenangananTeknisPage() {
         </div>
       )}
 
-      {/* MODAL 2: TAMBAH WORK ORDER MANUAL BARU */}
+      {/* MODAL 2: UPDATE LOG PENANGANAN (SESUAI GAMBAR RUJUKAN 1) */}
+      {showUpdateLogModal && selectedReportForLog && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5">
+            {/* Header Modal */}
+            <div className="flex justify-between items-start border-b border-slate-100 pb-3">
+              <div className="flex items-center space-x-3">
+                <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl">
+                  <Wrench size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-800">Update Log Penanganan</h3>
+                  <div className="flex items-center space-x-2 mt-1">
+                    <span className="bg-blue-50 text-blue-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-blue-100">
+                      • {selectedReportForLog.rtg} • {selectedReportForLog.lokasi}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    Teknisi: <strong className="text-slate-800">{selectedReportForLog.teknisi || "Belum Ditugaskan"}</strong>
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowUpdateLogModal(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg transition"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSaveUpdateLog} className="space-y-4 text-xs">
+              {/* Progres Penanganan RTG */}
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="font-bold text-slate-700">Progres Penanganan RTG</label>
+                  <span className="bg-blue-100 text-blue-800 font-extrabold px-2.5 py-0.5 rounded text-[11px]">
+                    {progresVal}% Test
+                  </span>
+                </div>
+
+                {/* Preset Options */}
+                <div className="grid grid-cols-4 gap-2 mb-3">
+                  {[
+                    { label: "25% Diagnosa", val: 25 },
+                    { label: "50% Perbaikan", val: 50 },
+                    { label: "75% Testing", val: 75 },
+                    { label: "90% Final Check", val: 90 },
+                  ].map((item) => (
+                    <button
+                      type="button"
+                      key={item.val}
+                      onClick={() => setProgresVal(item.val)}
+                      className={`py-2 px-1 rounded-lg text-[11px] font-bold border transition ${
+                        progresVal === item.val
+                          ? "bg-blue-50 text-blue-700 border-blue-400 shadow-sm"
+                          : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+                      }`}
+                    >
+                      {item.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Progress Bar */}
+                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden">
+                  <div
+                    className="bg-blue-600 h-full transition-all duration-300 rounded-full"
+                    style={{ width: `${progresVal}%` }}
+                  ></div>
+                </div>
+              </div>
+
+              {/* Catatan Tindakan Teknisi */}
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="font-bold text-slate-700">
+                    Catatan Tindakan Teknisi <span className="text-red-500">*</span>
+                  </label>
+                  <span className="text-[10px] text-slate-400">{catatanInput.length} / 500 karakter</span>
+                </div>
+                <textarea
+                  rows={4}
+                  maxLength={500}
+                  value={catatanInput}
+                  onChange={(e) => setCatatanInput(e.target.value)}
+                  placeholder="Tambah Catatan."
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 focus:outline-none focus:border-blue-500 text-xs text-slate-800 placeholder-slate-400"
+                  required
+                />
+                <p className="text-[10px] text-slate-500 mt-1 flex items-center space-x-1">
+                  <span>🛠</span>
+                  <span>Pastikan parameter pengujian beban dicatat lengkap sebelum serah terima shift lapangan.</span>
+                </p>
+              </div>
+
+              {/* Footer Modal Update Log */}
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                <div className="flex items-center space-x-1 text-[10px] text-emerald-600 font-semibold">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span>TOS Real-Time Telemetry Terhubung</span>
+                </div>
+
+                <div className="flex space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowUpdateLogModal(false)}
+                    className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg font-semibold hover:bg-slate-200 transition"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-[#0e5c75] hover:bg-[#0b485c] text-white rounded-lg font-semibold transition shadow-sm flex items-center space-x-1"
+                  >
+                    <CheckCircle2 size={14} />
+                    <span>Simpan Log</span>
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3: SELESAIKAN WORK ORDER (SESUAI GAMBAR RUJUKAN 2) */}
+      {showSelesaiModal && selectedReportForSelesai && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-5">
+            {/* Header Modal */}
+            <div className="flex justify-between items-start border-b border-slate-100 pb-3">
+              <div className="flex items-center space-x-3">
+                <div className="p-2.5 bg-emerald-600 text-white rounded-xl">
+                  <CheckCircle2 size={20} />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-800">Selesaikan Work Order</h3>
+                  <div className="flex items-center space-x-2 mt-0.5">
+                    <span className="bg-emerald-50 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-100">
+                      • {selectedReportForSelesai.rtg} • {selectedReportForSelesai.lokasi}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowSelesaiModal(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg transition"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form onSubmit={handleConfirmSelesaikan} className="space-y-4 text-xs">
+              {/* Upload Foto Bukti Perbaikan */}
+              <div>
+                <label className="font-bold text-slate-700 block mb-1.5">
+                  Upload Foto Bukti Perbaikan <span className="text-red-500">*</span>
+                </label>
+
+                <input
+                  type="file"
+                  ref={fileInputSelesaiRef}
+                  onChange={handleFotoSelesaiChange}
+                  multiple
+                  accept="image/png, image/jpeg"
+                  className="hidden"
+                />
+
+                <div
+                  onClick={() => fileInputSelesaiRef.current?.click()}
+                  className="border-2 border-dashed border-slate-200 rounded-xl p-6 text-center bg-slate-50 hover:bg-slate-100/60 transition cursor-pointer flex flex-col items-center justify-center"
+                >
+                  <div className="p-2.5 bg-blue-50 text-blue-500 rounded-full mb-1.5">
+                    <UploadCloud size={20} />
+                  </div>
+                  <p className="text-xs font-semibold text-slate-700">
+                    Unggah Berkas Bukti (PNG/JPG)
+                  </p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    Tarik berkas atau klik untuk jelajah (Maksimal 5MB)
+                  </p>
+                </div>
+
+                {fotoSelesaiFiles.length > 0 && (
+                  <div className="mt-2 space-y-1">
+                    {fotoSelesaiFiles.map((f, idx) => (
+                      <div key={idx} className="flex justify-between items-center bg-slate-50 p-2 rounded-lg text-[11px] border border-slate-200">
+                        <span className="truncate max-w-xs font-medium text-slate-700">{f.name}</span>
+                        <button
+                          type="button"
+                          onClick={() => setFotoSelesaiFiles(prev => prev.filter((_, i) => i !== idx))}
+                          className="text-slate-400 hover:text-red-500"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Catatan Akhir Penanganan */}
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="font-bold text-slate-700">Catatan Akhir Penanganan</label>
+                  <span className="text-[10px] text-slate-400">Opsional</span>
+                </div>
+                <textarea
+                  rows={3}
+                  value={catatanSelesaiInput}
+                  onChange={(e) => setCatatanSelesaiInput(e.target.value)}
+                  placeholder="Tambah Catatan......"
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 focus:outline-none focus:border-emerald-500 text-xs text-slate-800 placeholder-slate-400"
+                />
+                <p className="text-[10px] text-slate-500 mt-1 flex items-start space-x-1">
+                  <Info size={12} className="shrink-0 mt-0.5 text-blue-500" />
+                  <span>
+                    Catatan ini akan otomatis masuk ke Berita Acara Perbaikan (BAP) digital dan log historis {selectedReportForSelesai.rtg} untuk audit keselamatan terminal.
+                  </span>
+                </p>
+              </div>
+
+              {/* Footer Modal Selesaikan */}
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                <div className="flex items-center space-x-1 text-[10px] text-emerald-600 font-semibold">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                  <span>Siap ditutup ke BAP Digital</span>
+                </div>
+
+                <div className="flex space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowSelesaiModal(false)}
+                    className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg font-semibold hover:bg-slate-200 transition"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-4 py-2 bg-[#0b3c3c] hover:bg-[#082e2e] text-white rounded-lg font-semibold transition shadow-sm flex items-center space-x-1"
+                  >
+                    <ShieldCheck size={14} />
+                    <span>Konfirmasi & Selesaikan</span>
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL PREVIEW FOTO BESAR */}
+      {activeImagePreview && (
+        <div
+          onClick={() => setActiveImagePreview(null)}
+          className="fixed inset-0 bg-slate-950/80 backdrop-blur-md z-[100] flex items-center justify-center p-4 cursor-zoom-out"
+        >
+          <div className="relative max-w-3xl w-full max-h-[85vh] flex items-center justify-center">
+            <button
+              onClick={() => setActiveImagePreview(null)}
+              className="absolute -top-10 right-0 text-white bg-slate-800/80 hover:bg-slate-700 p-2 rounded-full transition"
+            >
+              <X size={20} />
+            </button>
+            <img
+              src={activeImagePreview}
+              alt="Bukti Foto Besar"
+              className="max-w-full max-h-[80vh] rounded-xl object-contain shadow-2xl border border-slate-700"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 4: TAMBAH WORK ORDER MANUAL BARU */}
       {showAddWOModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
@@ -873,10 +1341,10 @@ export default function PenangananTeknisPage() {
                     onChange={(e) => setNewPrioritas(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 focus:outline-none"
                   >
-                    <option value="CRITICAL P1">CRITICAL P1</option>
-                    <option value="HIGH P2">HIGH P2</option>
-                    <option value="MEDIUM P3">MEDIUM P3</option>
-                    <option value="NORMAL P4">NORMAL P4</option>
+                   
+                    <option value="HIGH P2">HIGH P1</option>
+                    <option value="MEDIUM P3">MEDIUM P2</option>
+                    <option value="NORMAL P4">LOW P3</option>
                   </select>
                 </div>
               </div>
@@ -931,7 +1399,7 @@ export default function PenangananTeknisPage() {
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
             <span className="text-slate-600 font-medium">Terminal TOS Connected</span>
           </span>
-          <span>• TOS Server: V3.4.1-Ops</span>
+          <span>TOS Server: V3.4.1-Ops</span>
         </div>
       </footer>
     </div>

@@ -25,11 +25,12 @@ export default function FormPelaporanPage() {
   const pathname = usePathname();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-const [tanggal, setTanggal] = useState("");
+  const [tanggal, setTanggal] = useState("");
 
-useEffect(() => {
-  setTanggal(new Date().toISOString().split("T")[0]);
-}, []);
+  useEffect(() => {
+    setTanggal(new Date().toISOString().split("T")[0]);
+  }, []);
+
   const [nomorRtg, setNomorRtg] = useState("");
   const [lokasiBlok, setLokasiBlok] = useState("");
   const [kategori, setKategori] = useState("");
@@ -98,45 +99,65 @@ useEffect(() => {
     setSelectedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // HANDLER SUBMIT DENGAN KONVERSI GAMBAR KE BASE64
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nomorRtg || (!praOperasi && !pascaOperasi)) {
       alert("Mohon pilih Nomor RTG dan isi minimal salah satu catatan kendala.");
       return;
     }
 
-    const newReport = {
-      id: Date.now(),
-      tanggal,
-      jam: new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) + " WIB",
-      rtg: nomorRtg,
-      lokasi: lokasiBlok || "BLOK A",
-      pelapor: "Supervisi Lapangan",
-      praOperasi: praOperasi || "-",
-      pascaOperasi: pascaOperasi || "-",
-      kategori: kategori || "Kendala Umum",
-      prioritas: prioritas,
-      status: "MENUNGGU PENANGANAN",
-      teknisi: "Belum Ditugaskan",
-    };
+    try {
+      // Process file conversion to Base64
+      const fotoBase64Promises = selectedFiles.map((file) => {
+        return new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = (err) => reject(err);
+          reader.readAsDataURL(file);
+        });
+      });
 
-    const existingReports = JSON.parse(localStorage.getItem("rtg_reports") || "[]");
-    localStorage.setItem("rtg_reports", JSON.stringify([newReport, ...existingReports]));
+      const fotoBase64Array = await Promise.all(fotoBase64Promises);
 
-    alert(`Laporan unit ${nomorRtg} berhasil dikirim!`);
+      const newReport = {
+        id: Date.now(),
+        tanggal,
+        jam: new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) + " WIB",
+        rtg: nomorRtg,
+        lokasi: lokasiBlok || "BLOK A",
+        pelapor: "Supervisi Lapangan",
+        praOperasi: praOperasi || "-",
+        pascaOperasi: pascaOperasi || "-",
+        kategori: kategori || "Kendala Umum",
+        prioritas: prioritas,
+        status: "MENUNGGU PENANGANAN",
+        teknisi: "Belum Ditugaskan",
+        fotoBukti: fotoBase64Array, // Array Base64 Gambar untuk Penanganan Teknis
+        selectedFiles: selectedFiles.map((f) => f.name), // Nama file
+      };
 
-    setNomorRtg("");
-    setLokasiBlok("");
-    setKategori("");
-    setPrioritas("MEDIUM P3");
-    setPraOperasi("");
-    setPascaOperasi("");
-    setSelectedFiles([]);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
+      const existingReports = JSON.parse(localStorage.getItem("rtg_reports") || "[]");
+      localStorage.setItem("rtg_reports", JSON.stringify([newReport, ...existingReports]));
+
+      alert(`Laporan unit ${nomorRtg} berhasil dikirim!`);
+
+      setNomorRtg("");
+      setLokasiBlok("");
+      setKategori("");
+      setPrioritas("MEDIUM P3");
+      setPraOperasi("");
+      setPascaOperasi("");
+      setSelectedFiles([]);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+
+      router.push("/penanganan-teknis");
+    } catch (error) {
+      console.error("Gagal mengupload gambar:", error);
+      alert("Terjadi kesalahan saat memproses lampiran gambar.");
     }
-
-    router.push("/dasboard");
   };
 
   return (
@@ -354,36 +375,36 @@ useEffect(() => {
               <div className="grid grid-cols-3 gap-3">
                 <button
                   type="button"
-                  onClick={() => setPrioritas("CRITICAL P1")}
+                  onClick={() => setPrioritas("HIGH P1")}
                   className={`py-2 px-3 rounded-lg text-xs font-bold border flex items-center justify-center space-x-1.5 transition ${
-                    prioritas === "CRITICAL P1"
+                    prioritas === "HIGH P1"
                       ? "bg-red-600 text-white border-red-600 shadow-sm animate-pulse"
                       : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-red-50"
                   }`}
                 >
-                  <span>🔴 Emergency (Stop Operasi)</span>
+                  <span>🔴 HIGH (P1)</span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => setPrioritas("MEDIUM P3")}
+                  onClick={() => setPrioritas("MEDIUM P2")}
                   className={`py-2 px-3 rounded-lg text-xs font-bold border flex items-center justify-center space-x-1.5 transition ${
-                    prioritas === "MEDIUM P3"
+                    prioritas === "MEDIUM P2"
                       ? "bg-amber-500 text-white border-amber-500 shadow-sm"
                       : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-amber-50"
                   }`}
                 >
-                  <span>🟠 Sedang (Slow Response)</span>
+                  <span>🟠 MEDIUM (P2)</span>
                 </button>
                 <button
                   type="button"
-                  onClick={() => setPrioritas("NORMAL P4")}
+                  onClick={() => setPrioritas("LOW P3")}
                   className={`py-2 px-3 rounded-lg text-xs font-bold border flex items-center justify-center space-x-1.5 transition ${
-                    prioritas === "NORMAL P4"
-                      ? "bg-blue-600 text-white border-blue-600 shadow-sm"
-                      : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-blue-50"
+                    prioritas === "LOW P3"
+                      ? "bg-green-600 text-white border-green-600 shadow-sm"
+                      : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-green-50"
                   }`}
                 >
-                  <span>🔵 Rendah (Inspeksi Rutin)</span>
+                  <span>🔵 LOW (P3)</span>
                 </button>
               </div>
             </div>
