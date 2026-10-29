@@ -8,7 +8,6 @@ import {
   Bell, 
   User, 
   CheckCircle2, 
-  AlertTriangle, 
   AlertOctagon, 
   FileText, 
   Plus, 
