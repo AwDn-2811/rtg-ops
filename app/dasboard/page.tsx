@@ -87,13 +87,14 @@ export default function DashboardPage() {
   const totalPerbaikan = reportedRtgSet.size;
   const totalNormal = 35 - totalPerbaikan;
 
+  // Hitung jumlah laporan per unit untuk grafik
   const rtgCounts: Record<string, number> = {};
   reports.forEach((r) => {
     rtgCounts[r.rtg] = (rtgCounts[r.rtg] || 0) + 1;
   });
 
   const chartData = Object.keys(rtgCounts).map((key) => ({
-    label: key,
+    label: key, // Menggunakan label lengkap "RTG XX"
     value: rtgCounts[key],
   }));
 
@@ -132,44 +133,21 @@ export default function DashboardPage() {
       Pelapor: r.pelapor,
       Prioritas: r.prioritas || "MEDIUM P3",
       Kategori: r.kategori,
-      "Temuan Pra-Operasi": r.praOperasi,
-      "Temuan Pasca-Operasi": r.pascaOperasi,
+      "Temuan Kendala Alat": r.praOperasi !== "-" ? r.praOperasi : r.pascaOperasi,
       Status: r.status,
       "Nama PIC / Penanggung Jawab": r.teknisi?.trim() || "Belum Ditugaskan",
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(excelData);
-    const columnWidths = [
-      6,  // No
-      14, // Tanggal
-      12, // Jam
-      14, // Nomor RTG
-      16, // Lokasi
-      23, // Pelapor
-      31, // Nama PIC / Penanggung Jawab
-      18, // Prioritas
-      25, // Kategori
-      40, // Temuan Pra-Operasi
-      40, // Temuan Pasca-Operasi
-      22, // Status
-    ];
+    const columnWidths = [6, 14, 12, 14, 16, 23, 18, 25, 45, 22, 31];
 
-    worksheet["!cols"] = columnWidths.map(
-      (wch) => ({ wch })
-    );
+    worksheet["!cols"] = columnWidths.map((wch) => ({ wch }));
 
-    // Mengatur Wrap Text dan tampilan setiap sel Excel
-    const range = XLSX.utils.decode_range(
-      worksheet["!ref"]!
-    );
+    const range = XLSX.utils.decode_range(worksheet["!ref"]!);
 
     for (let row = range.s.r; row <= range.e.r; row++) {
       for (let col = range.s.c; col <= range.e.c; col++) {
-        const address = XLSX.utils.encode_cell({
-          r: row,
-          c: col,
-        });
-
+        const address = XLSX.utils.encode_cell({ r: row, c: col });
         const cell = worksheet[address];
         if (!cell) continue;
 
@@ -180,86 +158,34 @@ export default function DashboardPage() {
             name: "Calibri",
             sz: header ? 11 : 10,
             bold: header,
-            color: {
-              rgb: header ? "FFFFFF" : "243447",
-            },
+            color: { rgb: header ? "FFFFFF" : "243447" },
           },
-
           fill: {
             fgColor: {
-              rgb: header
-                ? "0B3C3C"
-                : row % 2 === 0
-                ? "F1F7F8"
-                : "FFFFFF",
+              rgb: header ? "0B3C3C" : row % 2 === 0 ? "F1F7F8" : "FFFFFF",
             },
           },
-
           alignment: {
             wrapText: true,
             vertical: header ? "center" : "top",
-            horizontal:
-              header || col === 0 ? "center" : "left",
+            horizontal: header || col === 0 ? "center" : "left",
           },
-
           border: {
-            bottom: {
-              style: "thin",
-              color: { rgb: "DCE5E8" },
-            },
+            bottom: { style: "thin", color: { rgb: "DCE5E8" } },
           },
         };
       }
     }
 
-    // Menghitung perkiraan tinggi baris berdasarkan isi
-    worksheet["!rows"] = [
-      { hpt: 36 }, // Tinggi header
-
-      ...excelData.map((record) => {
-        const values = Object.values(record);
-
-        const neededLines = Math.max(
-          1,
-          ...values.map((value, col) => {
-            const text = String(value ?? "");
-
-            const estimatedCharsPerLine = Math.max(
-              columnWidths[col] - 4,
-              1
-            );
-
-            return text.split(/\r?\n/).reduce(
-              (count, line) => {
-                return count + Math.max(
-                  1,
-                  Math.ceil(
-                    line.length / estimatedCharsPerLine
-                  )
-                );
-              },
-              0
-            );
-          })
-        );
-
-        return {
-          hpt: Math.min(
-            400,
-            Math.max(27, neededLines * 17 + 9)
-          ),
-        };
-      }),
-    ];
-
-    // aktifkan filter header Excel
-    worksheet["!autofilter"] = {
-      ref: worksheet["!ref"]!,
-    };
+    worksheet["!autofilter"] = { ref: worksheet["!ref"]! };
 
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Rekap Laporan RTG");
-    XLSX.writeFile(workbook, `Rekap_Evaluasi_RTG_${new Date().toISOString().split("T")[0]}.xlsx`, { cellStyles: true });
+    XLSX.writeFile(
+      workbook,
+      `Rekap_Evaluasi_RTG_${new Date().toISOString().split("T")[0]}.xlsx`,
+      { cellStyles: true }
+    );
   };
 
   const clearData = () => {
@@ -271,7 +197,7 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-800 font-sans text-sm pb-10">
-      {/* Header / Navbar Baru */}
+      {/* Header / Navbar */}
       <header className="bg-[#0b3c3c] text-white px-8 py-4 flex items-center justify-between shadow-md relative z-50">
         <div className="flex items-center space-x-3.5">
           <div className="bg-emerald-600 p-2 rounded-lg shadow-sm">
@@ -283,7 +209,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Navigasi Terhubung ke Semua Halaman */}
+        {/* Navigasi Header */}
         <nav className="flex items-center space-x-2 bg-[#082e2e] p-1.5 rounded-full text-xs shadow-inner">
           <Link
             href="/form-pelaporan"
@@ -412,7 +338,7 @@ export default function DashboardPage() {
                   className="w-full mt-2 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-xs font-semibold flex items-center justify-center space-x-1.5 transition"
                 >
                   <LogOut size={14} />
-                  <span>Ganti Shift / Logout</span> 
+                  <span>Ganti Shift / Logout</span>
                 </button>
               </div>
             )}
@@ -437,14 +363,14 @@ export default function DashboardPage() {
             <div className="flex space-x-2">
               <button
                 onClick={exportToExcel}
-                className="bg-emerald-700 hover:bg-emerald-800 text-white px-3 py-2 rounded-lg font-medium text-xs flex items-center space-x-1.5 transition shadow"
+                className="bg-emerald-700 hover:bg-emerald-800 text-white px-3 py-2 rounded-lg font-medium text-xs flex items-center space-x-1.5 transition shadow cursor-pointer"
               >
                 <Download size={16} />
                 <span>Rekap Excel</span>
               </button>
               <button 
                 onClick={() => router.push("/form-pelaporan")}
-                className="bg-[#0e5c75] hover:bg-[#0b485c] border border-emerald-400 text-white px-4 py-2 rounded-lg font-medium text-xs flex items-center space-x-1.5 transition shadow"
+                className="bg-[#0e5c75] hover:bg-[#0b485c] border border-emerald-400 text-white px-4 py-2 rounded-lg font-medium text-xs flex items-center space-x-1.5 transition shadow cursor-pointer"
               >
                 <Plus size={16} />
                 <span>Buat Laporan Kendala</span>
@@ -453,7 +379,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Top Summary Cards */}
+        {/* Top Summary Cards (TULISAN MERAH DIHAPUS, BERSIH) */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-white p-4 rounded-xl border border-slate-200 flex justify-between items-start shadow-sm">
             <div>
@@ -466,13 +392,12 @@ export default function DashboardPage() {
             <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg"><CheckCircle2 size={20} /></div>
           </div>
 
-
           <div className="bg-white p-4 rounded-xl border border-slate-200 flex justify-between items-start shadow-sm">
             <div>
               <p className="text-xs text-slate-500 font-medium">RTG Perlu Perbaikan</p>
               <h3 className="text-2xl font-bold mt-1 text-red-600">{totalPerbaikan} <span className="text-xs font-normal text-slate-500">unit</span></h3>
-              <p className="text-[11px] text-red-500 mt-2 font-medium">
-                {totalPerbaikan > 0 ? `${reports.map(r => r.rtg).join(", ")} butuh tindak lanjut` : "Tidak ada unit rusak"}
+              <p className="text-[11px] text-slate-500 mt-2 font-medium">
+                {totalPerbaikan > 0 ? `• ${totalPerbaikan} unit terdeteksi butuh pemeliharaan` : "• Seluruh unit siap operasi"}
               </p>
             </div>
             <div className="p-2 bg-red-50 text-red-500 rounded-lg"><AlertOctagon size={20} /></div>
@@ -482,7 +407,7 @@ export default function DashboardPage() {
             <div>
               <p className="text-xs text-slate-500 font-medium">Laporan Hari Ini</p>
               <h3 className="text-2xl font-bold mt-1 text-slate-800">{reports.length} <span className="text-xs font-normal text-slate-500">laporan masuk</span></h3>
-              <p className="text-[11px] text-blue-600 mt-2 font-medium">• Shift 1 & Shift 2 aktif</p>
+              <p className="text-[11px] text-blue-600 mt-2 font-medium">• Shift A & Shift B Terhubung</p>
             </div>
             <div className="p-2 bg-blue-50 text-blue-500 rounded-lg"><FileText size={20} /></div>
           </div>
@@ -536,63 +461,112 @@ export default function DashboardPage() {
 
         {/* Bottom Section: Chart & Table */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
-            <div>
-              <div className="flex justify-between items-center mb-1">
-                <h3 className="font-bold text-sm text-slate-800">Grafik Laporan Kendala</h3>
-                <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded text-slate-500 font-medium">
-                  Sumbu X: Unit / Y: Jumlah
-                </span>
-              </div>
-              <p className="text-xs text-slate-400 mb-6">Distribusi frekuensi laporan per unit RTG terkini</p>
-
-              <div className="relative pl-7 pr-2 pt-4 pb-6 h-48 border-b border-l border-slate-300">
-                <div className="absolute left-0 top-0 bottom-6 flex flex-col justify-between text-[10px] font-semibold text-slate-400 pr-1.5 text-right w-6">
-                  <span>{maxVal}</span>
-                  <span>{Math.round(maxVal / 2)}</span>
-                  <span>0</span>
-                </div>
-
-                <div className="absolute left-6 right-0 top-4 border-b border-dashed border-slate-200"></div>
-                <div className="absolute left-6 right-0 top-1/2 border-b border-dashed border-slate-200"></div>
-
-                <div className="flex items-end justify-around gap-3 h-full w-full relative z-10">
-                  {chartData.length === 0 ? (
-                    <div className="w-full text-center text-xs text-slate-400 my-auto">
-                      Belum ada laporan kendala
+          
+          {/* Grafik Laporan Kendala */}
+                {/* Grafik Laporan Kendala (Opsi 2: Grafik Diperbesar + Ringkasan Kategori Scrollable) */}
+                <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                  <div>
+                    <div className="flex justify-between items-center mb-1">
+                      <h3 className="font-bold text-sm text-slate-800">Grafik Laporan Kendala</h3>
+                      <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded text-slate-500 font-medium">
+                        Sumbu X: Unit / Y: Jumlah
+                      </span>
                     </div>
-                  ) : (
-                    chartData.map((bar, idx) => {
-                      const barHeightPercent = Math.max(20, Math.round((bar.value / maxVal) * 100));
+                    <p className="text-xs text-slate-400 mb-3">Distribusi frekuensi laporan per unit RTG terkini</p>
 
-                      return (
-                        <div key={idx} className="flex-1 flex flex-col items-center h-full justify-end">
-                          <span className="text-[10px] text-slate-700 font-bold mb-1">{bar.value}</span>
-                          <div
-                            style={{ height: `${barHeightPercent}%` }}
-                            className="w-full max-w-9 bg-[#0e5c75] rounded-t-md hover:bg-emerald-500 transition-all duration-300 shadow-sm"
-                          ></div>
-                          <span className="absolute -bottom-5 text-[10px] text-slate-600 font-medium truncate max-w-12 text-center">
-                            {bar.label}
-                          </span>
-                        </div>
-                      );
-                    })
-                  )}
+                    {/* AREA GRAFIK TINGGI & TINGKAT LEGA (h-56) */}
+                    <div className="relative pl-7 pr-2 pt-3 pb-10 h-56 border-b border-l border-slate-300">
+                      {/* Sumbu Y Angka Laporan */}
+                      <div className="absolute left-0 top-0 bottom-10 flex flex-col justify-between text-[10px] font-semibold text-slate-400 pr-1 text-right w-6">
+                        <span>{maxVal}</span>
+                        <span>{Math.round(maxVal / 2)}</span>
+                        <span>0</span>
+                      </div>
+
+                      {/* Garis Bantu Horizontal */}
+                      <div className="absolute left-6 right-0 top-3 border-b border-dashed border-slate-200"></div>
+                      <div className="absolute left-6 right-0 top-1/2 border-b border-dashed border-slate-200"></div>
+
+                      {/* Batang Grafik & Nomor RTG */}
+                      <div className="flex items-end justify-between gap-2 h-full w-full relative z-10 overflow-x-auto pb-8">
+                        {chartData.length === 0 ? (
+                          <div className="w-full text-center text-xs text-slate-400 my-auto">
+                            Belum ada laporan kendala
+                          </div>
+                        ) : (
+                          chartData.map((bar, idx) => {
+                            const barHeightPercent = Math.max(15, Math.round((bar.value / maxVal) * 100));
+
+                            return (
+                              <div key={idx} className="flex-1 flex flex-col items-center h-full justify-end min-w-[36px] relative">
+                                {/* Nilai Jumlah */}
+                                <span className="text-[10px] text-slate-700 font-bold mb-1">{bar.value}</span>
+                                
+                                {/* Visual Batang Grafik */}
+                                <div
+                                  style={{ height: `${barHeightPercent}%` }}
+                                  className="w-full max-w-[22px] bg-[#0e5c75] rounded-t-sm hover:bg-emerald-500 transition-all duration-300 shadow-sm"
+                                ></div>
+
+                                {/* Nomor RTG di Bawah Batang */}
+                                <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 flex flex-col items-center w-full">
+                                  <span className="text-[9px] font-bold text-slate-700 whitespace-nowrap">
+                                    {bar.label.includes("RTG") ? bar.label : `RTG ${bar.label}`}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="text-center text-[10px] font-bold text-slate-400 mt-3 mb-3">
+                      Unit RTG Crane (Sumbu X)
+                    </div>
+
+                    {/* WIDGET RINGKASAN KATEGORI DENGAN SCROLL VERTIKAL (max-h-36) */}
+                    <div className="space-y-2 pt-2 border-t border-slate-100">
+                      <div className="flex justify-between items-center">
+                        <h4 className="text-xs font-bold text-slate-700">Ringkasan Kategori Kendala</h4>
+                        <span className="text-[10px] text-slate-400 italic">Scroll untuk detail</span>
+                      </div>
+
+                      {/* Area Scroll Internal Kategori */}
+                      <div className="max-h-36 overflow-y-auto pr-1 space-y-1.5 text-xs">
+                        {[
+                          "Sistem Hidrolik",
+                          "Spreader & Twistlock",
+                          "Hoist & Motor",
+                          "Sistem Elektrikal / Genset",
+                          "Gantry & Ban"
+                        ].map((kategoriName) => {
+                          const totalKasus = reports.filter(r => r.kategori === kategoriName).length;
+                          return (
+                            <div 
+                              key={kategoriName} 
+                              className="flex justify-between items-center px-3 py-2 bg-slate-50 rounded-lg border border-slate-100 hover:bg-slate-100 transition"
+                            >
+                              <span className="text-slate-600 font-medium text-[11px]">{kategoriName}</span>
+                              <span className={`font-bold px-2 py-0.5 rounded text-[10px] ${
+                                totalKasus > 0 ? "bg-teal-100 text-[#0e5c75]" : "bg-slate-200 text-slate-500"
+                              }`}>
+                                {totalKasus} Kasus
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between items-center text-[11px] text-slate-500 pt-3 border-t border-slate-100 mt-3">
+                    <span>Total: {reports.length} Laporan</span>
+                    <span className="font-semibold text-slate-700">Terselesaikan: 0%</span>
+                  </div>
                 </div>
-              </div>
 
-              <div className="text-center text-[10px] font-semibold text-slate-400 mt-7">
-                Unit RTG Crane (Sumbu X)
-              </div>
-            </div>
-
-            <div className="flex justify-between items-center text-[11px] text-slate-500 pt-3 border-t border-slate-100 mt-2">
-              <span>• Total: {reports.length} Laporan</span>
-              <span className="font-medium text-slate-700">Terselesaikan: 0%</span>
-            </div>
-          </div>
-
+          {/* Laporan Kendala Terbaru (TEMUAN KENDALA ALAT DIGABUNG + SCROLL VERTIKAL) */}
           <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
             <div>
               <div className="flex justify-between items-center mb-3">
@@ -609,7 +583,7 @@ export default function DashboardPage() {
                     />
                   </div>
                   {reports.length > 0 && (
-                    <button onClick={clearData} title="Reset Data Laporan" className="p-1.5 border border-slate-200 rounded-md text-red-500 hover:bg-red-50">
+                    <button onClick={clearData} title="Reset Data Laporan" className="p-1.5 border border-slate-200 rounded-md text-red-500 hover:bg-red-50 cursor-pointer">
                       <Trash2 size={14} />
                     </button>
                   )}
@@ -617,13 +591,13 @@ export default function DashboardPage() {
               </div>
 
               {/* Filter Tombol Kategori */}
-              <div className="flex items-center space-x-1.5 mb-4 overflow-x-auto pb-1">
+              <div className="flex items-center space-x-1.5 mb-3 overflow-x-auto pb-1">
                 <span className="text-[11px] font-bold text-slate-400 mr-1">Filter:</span>
                 {["SEMUA", "Sistem Hidrolik", "Spreader & Twistlock", "Hoist & Motor", "Sistem Elektrikal / Genset", "Gantry & Ban"].map((kat) => (
                   <button
                     key={kat}
                     onClick={() => setSelectedKategoriFilter(kat)}
-                    className={`px-2.5 py-1 rounded-full text-[10px] font-semibold transition whitespace-nowrap ${
+                    className={`px-2.5 py-1 rounded-full text-[10px] font-semibold transition whitespace-nowrap cursor-pointer ${
                       selectedKategoriFilter === kat
                         ? "bg-[#0b3c3c] text-white"
                         : "bg-slate-100 text-slate-600 hover:bg-slate-200"
@@ -634,28 +608,28 @@ export default function DashboardPage() {
                 ))}
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs">
-                  <thead>
-                    <tr className="border-b border-slate-100 bg-slate-50 text-slate-500 font-medium">
-                      <th className="py-2 px-3">TANGGAL</th>
-                      <th className="py-2 px-3">RTG</th>
-                      <th className="py-2 px-3">PRIORITAS</th>
-                      <th className="py-2 px-3">TEMUAN PRA-OPERASI</th>
-                      <th className="py-2 px-3">TEMUAN PASCA-OPERASI</th>
-                      <th className="py-2 px-3">ST</th>
+              {/* TABEL SCROLL VERTIKAL INTERNAL DENGAN KOLOM TEMUAN DIGABUNG */}
+              <div className="overflow-x-auto max-h-[380px] overflow-y-auto border border-slate-100 rounded-lg">
+                <table className="w-full text-left text-xs relative">
+                  <thead className="sticky top-0 bg-slate-100 text-slate-600 font-bold z-10 shadow-sm">
+                    <tr>
+                      <th className="py-2.5 px-3">TANGGAL</th>
+                      <th className="py-2.5 px-3">RTG</th>
+                      <th className="py-2.5 px-3">PRIORITAS</th>
+                      <th className="py-2.5 px-3">TEMUAN KENDALA ALAT</th>
+                      <th className="py-2.5 px-3">ST</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {filteredReports.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="py-8 text-center text-slate-400 italic">
+                        <td colSpan={5} className="py-8 text-center text-slate-400 italic">
                           Belum ada laporan kendala yang dikirim.
                         </td>
                       </tr>
                     ) : (
                       filteredReports.map((item) => (
-                        <tr key={item.id}>
+                        <tr key={item.id} className="hover:bg-slate-50 transition">
                           <td className="py-3 px-3 text-slate-500 whitespace-nowrap">
                             {item.tanggal}<br />
                             <span className="text-[10px] text-slate-400">{item.jam}</span>
@@ -677,11 +651,8 @@ export default function DashboardPage() {
                             <br />
                             <span className="text-[10px] text-slate-400">{item.kategori}</span>
                           </td>
-                          <td className="py-3 px-3 text-red-600 bg-red-50/50 p-2 rounded">
-                            {item.praOperasi}
-                          </td>
-                          <td className="py-3 px-3 text-slate-600">
-                            {item.pascaOperasi}
+                          <td className="py-3 px-3 text-red-600 bg-red-50/40 font-medium rounded-lg">
+                            {item.praOperasi !== "-" ? item.praOperasi : item.pascaOperasi}
                           </td>
                           <td className="py-3 px-3 whitespace-nowrap">
                             <button
@@ -689,7 +660,7 @@ export default function DashboardPage() {
                                 setSelectedReport(item);
                                 setShowDetailModal(true);
                               }}
-                              className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-[#0e5c75] transition flex items-center space-x-1"
+                              className="p-1.5 hover:bg-slate-200 rounded-lg text-slate-400 hover:text-[#0e5c75] transition flex items-center space-x-1 cursor-pointer"
                               title="Lihat Detail Tiket (ST)"
                             >
                               <ChevronRight size={18} />
@@ -703,9 +674,9 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="flex justify-between items-center text-[11px] text-slate-400 pt-3 border-t border-slate-100 mt-2">
+            <div className="flex justify-between items-center text-[11px] text-slate-400 pt-3 border-t border-slate-100 mt-3">
               <span>Menampilkan {filteredReports.length} tiket aktif terkini</span>
-              <span>• Auto-refresh setiap 30 detik (TOS Direct Stream)</span>
+              <span>Scroll tabel ke bawah untuk memuat data lainnya</span>
             </div>
           </div>
         </div>
@@ -726,7 +697,7 @@ export default function DashboardPage() {
               </div>
               <button
                 onClick={() => setShowDetailModal(false)}
-                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
               >
                 <X size={18} />
               </button>
@@ -740,7 +711,7 @@ export default function DashboardPage() {
                 </div>
                 <div>
                   <p className="text-slate-400">Waktu Pelaporan:</p>
-                  <p className="font-bold text-slate-700">{selectedReport.tanggal} • {selectedReport.jam}</p>
+                  <p className="font-bold text-slate-700">{selectedReport.tanggal} {selectedReport.jam}</p>
                 </div>
                 <div>
                   <p className="text-slate-400">Kategori Kendala:</p>
@@ -753,20 +724,17 @@ export default function DashboardPage() {
               </div>
 
               <div>
-                <p className="font-bold text-slate-700 mb-1">Temuan Pra-Operasi:</p>
-                <p className="p-2.5 bg-red-50 text-red-700 rounded-lg text-xs">{selectedReport.praOperasi}</p>
-              </div>
-
-              <div>
-                <p className="font-bold text-slate-700 mb-1">Temuan Pasca-Operasi:</p>
-                <p className="p-2.5 bg-slate-50 text-slate-700 rounded-lg text-xs">{selectedReport.pascaOperasi}</p>
+                <p className="font-bold text-slate-700 mb-1">Rincian Temuan Kendala Alat:</p>
+                <p className="p-2.5 bg-red-50 text-red-700 rounded-lg text-xs">
+                  {selectedReport.praOperasi !== "-" ? selectedReport.praOperasi : selectedReport.pascaOperasi}
+                </p>
               </div>
             </div>
 
             <div className="pt-3 border-t border-slate-100 flex justify-end space-x-2">
               <button
                 onClick={() => setShowDetailModal(false)}
-                className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-semibold hover:bg-slate-200"
+                className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-semibold hover:bg-slate-200 cursor-pointer"
               >
                 Tutup
               </button>
