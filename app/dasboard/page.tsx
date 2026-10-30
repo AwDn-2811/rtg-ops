@@ -498,14 +498,14 @@ export default function DashboardPage() {
                             const barHeightPercent = Math.max(15, Math.round((bar.value / maxVal) * 100));
 
                             return (
-                              <div key={idx} className="flex-1 flex flex-col items-center h-full justify-end min-w-[36px] relative">
+                              <div key={idx} className="flex-1 flex flex-col items-center h-full justify-end min-w-36px relative">
                                 {/* Nilai Jumlah */}
                                 <span className="text-[10px] text-slate-700 font-bold mb-1">{bar.value}</span>
                                 
                                 {/* Visual Batang Grafik */}
                                 <div
                                   style={{ height: `${barHeightPercent}%` }}
-                                  className="w-full max-w-[22px] bg-[#0e5c75] rounded-t-sm hover:bg-emerald-500 transition-all duration-300 shadow-sm"
+                                  className="w-full max-w-22px bg-[#0e5c75] rounded-t-sm hover:bg-emerald-500 transition-all duration-300 shadow-sm"
                                 ></div>
 
                                 {/* Nomor RTG di Bawah Batang */}
@@ -609,7 +609,7 @@ export default function DashboardPage() {
               </div>
 
               {/* TABEL SCROLL VERTIKAL INTERNAL DENGAN KOLOM TEMUAN DIGABUNG */}
-              <div className="overflow-x-auto max-h-[380px] overflow-y-auto border border-slate-100 rounded-lg">
+              <div className="overflow-x-auto max-h-380px overflow-y-auto border border-slate-100 rounded-lg">
                 <table className="w-full text-left text-xs relative">
                   <thead className="sticky top-0 bg-slate-100 text-slate-600 font-bold z-10 shadow-sm">
                     <tr>

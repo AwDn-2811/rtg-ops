@@ -571,7 +571,7 @@ export default function FormPelaporanPage() {
 
                         <div className="absolute top-2 left-2 bg-slate-900/80 text-white text-[9px] px-2 py-0.5 rounded-md font-semibold backdrop-blur-sm flex items-center space-x-1">
                           {item.type === "video" ? <Film size={10} /> : <Camera size={10} />}
-                          <span className="truncate max-w-[100px]">{item.name}</span>
+                          <span className="truncate max-w-100px">{item.name}</span>
                         </div>
 
                         <button
@@ -619,11 +619,11 @@ export default function FormPelaporanPage() {
 
       {/* POP-UP MODAL SEAMLESS: DESAIN RINGKAS MODERN TANPA BORDER BERTUMPUK */}
       {(isSubmitting || isSuccess) && (
-        <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-md z-100 flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full text-center shadow-2xl relative overflow-hidden space-y-5 text-white">
             
             {/* Header Line Akses Pelabuhan */}
-            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-400"></div>
+            <div className="absolute top-0 left-0 right-0 h-1.5 bg-linear-to-r from-emerald-500 via-teal-500 to-emerald-400"></div>
 
             {/* STATUS LOADING (CRANE BERJALAN HORIZONTAL SEAMLESS 10 DETIK) */}
             {isSubmitting && (
