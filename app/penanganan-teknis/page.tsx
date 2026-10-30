@@ -527,7 +527,7 @@
           {/* Kanban Board Layout */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* KOLOM 1: MENUNGGU PENANGANAN */}
-            <div className="bg-slate-200/50 p-4 rounded-xl border border-slate-200 flex flex-col h-450px min-h-0">
+            <div className="bg-slate-200/50 p-4 rounded-xl border border-slate-200 flex flex-col h-[450px] min-h-0">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-red-500"></span>
@@ -594,7 +594,7 @@
             </div>
 
             {/* KOLOM 2: SEDANG DIKERJAKAN */}
-            <div className="bg-slate-200/50 p-4 rounded-xl border border-slate-200 flex flex-col h-450px min-h-0">
+            <div className="bg-slate-200/50 p-4 rounded-xl border border-slate-200 flex flex-col h-[450px] min-h-0">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
@@ -671,7 +671,7 @@
             </div>
 
             {/* KOLOM 3: SELESAI HARI INI */}
-            <div className="bg-slate-200/50 p-4 rounded-xl border border-slate-200 flex flex-col h-450px min-h-0">
+            <div className="bg-slate-200/50 p-4 rounded-xl border border-slate-200 flex flex-col h-[450px] min-h-0">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
