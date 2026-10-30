@@ -293,6 +293,16 @@ export default function DashboardPage() {
           >
             Form Pelaporan
           </Link>
+
+          <Link
+            href="/verifikasi-mcc"
+            className={`px-5 py-2 rounded-full transition font-semibold ${
+              pathname === "/verifikasi-mcc" ? "bg-white text-[#0b3c3c] shadow" : "text-slate-300 hover:text-white"
+            }`}
+          >
+            Approval MCC
+          </Link>
+          
           <Link
             href="/dasboard"
             className={`px-5 py-2 rounded-full transition font-semibold ${

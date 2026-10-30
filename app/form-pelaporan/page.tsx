@@ -16,7 +16,6 @@ import {
   MapPin,
   Wrench,
   LogOut,
-  AlertOctagon,
   Zap,
 } from "lucide-react";
 
@@ -34,7 +33,6 @@ export default function FormPelaporanPage() {
   const [nomorRtg, setNomorRtg] = useState("");
   const [lokasiBlok, setLokasiBlok] = useState("");
   const [kategori, setKategori] = useState("");
-  const [prioritas, setPrioritas] = useState("MEDIUM P3");
   const [praOperasi, setPraOperasi] = useState("");
   const [pascaOperasi, setPascaOperasi] = useState("");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
@@ -130,8 +128,9 @@ export default function FormPelaporanPage() {
         praOperasi: praOperasi || "-",
         pascaOperasi: pascaOperasi || "-",
         kategori: kategori || "Kendala Umum",
-        prioritas: prioritas,
-        status: "MENUNGGU PENANGANAN",
+        // Prioritas ditetapkan oleh MCC setelah laporan diverifikasi.
+        prioritas: "BELUM DITETAPKAN",
+        status: "MENUNGGU VERIFIKASI MCC",
         teknisi: "Belum Ditugaskan",
         fotoBukti: fotoBase64Array, // Array Base64 Gambar untuk Penanganan Teknis
         selectedFiles: selectedFiles.map((f) => f.name), // Nama file
@@ -145,7 +144,6 @@ export default function FormPelaporanPage() {
       setNomorRtg("");
       setLokasiBlok("");
       setKategori("");
-      setPrioritas("MEDIUM P3");
       setPraOperasi("");
       setPascaOperasi("");
       setSelectedFiles([]);
@@ -153,7 +151,7 @@ export default function FormPelaporanPage() {
         fileInputRef.current.value = "";
       }
 
-      router.push("/penanganan-teknis");
+      router.push("/verifikasi-mcc");
     } catch (error) {
       console.error("Gagal mengupload gambar:", error);
       alert("Terjadi kesalahan saat memproses lampiran gambar.");
@@ -184,6 +182,16 @@ export default function FormPelaporanPage() {
           >
             Form Pelaporan
           </Link>
+
+          <Link
+            href="/verifikasi-mcc"
+            className={`px-5 py-2 rounded-full transition font-semibold ${
+              pathname === "/verifikasi-mcc" ? "bg-white text-[#0b3c3c] shadow" : "text-slate-300 hover:text-white"
+            }`}
+          >
+            Approval MCC
+          </Link>
+          
           <Link
             href="/dasboard"
             className={`px-5 py-2 rounded-full transition font-semibold ${
@@ -366,49 +374,6 @@ export default function FormPelaporanPage() {
               </div>
             )}
 
-            {/* Tingkat Urgensi Alat */}
-            <div>
-              <label className="text-xs font-bold text-slate-700 flex items-center space-x-1.5 mb-2">
-                <AlertOctagon size={14} className="text-red-500" />
-                <span>Tingkat Keparahan / Urgensi Alat</span>
-              </label>
-              <div className="grid grid-cols-3 gap-3">
-                <button
-                  type="button"
-                  onClick={() => setPrioritas("HIGH P1")}
-                  className={`py-2 px-3 rounded-lg text-xs font-bold border flex items-center justify-center space-x-1.5 transition ${
-                    prioritas === "HIGH P1"
-                      ? "bg-red-600 text-white border-red-600 shadow-sm animate-pulse"
-                      : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-red-50"
-                  }`}
-                >
-                  <span>🔴 HIGH (P1)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPrioritas("MEDIUM P2")}
-                  className={`py-2 px-3 rounded-lg text-xs font-bold border flex items-center justify-center space-x-1.5 transition ${
-                    prioritas === "MEDIUM P2"
-                      ? "bg-amber-500 text-white border-amber-500 shadow-sm"
-                      : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-amber-50"
-                  }`}
-                >
-                  <span>🟠 MEDIUM (P2)</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPrioritas("LOW P3")}
-                  className={`py-2 px-3 rounded-lg text-xs font-bold border flex items-center justify-center space-x-1.5 transition ${
-                    prioritas === "LOW P3"
-                      ? "bg-green-600 text-white border-green-600 shadow-sm"
-                      : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-green-50"
-                  }`}
-                >
-                  <span>🔵 LOW (P3)</span>
-                </button>
-              </div>
-            </div>
-
             {/* Kategori Utama */}
             <div>
               <label className="text-xs font-bold text-slate-700 flex items-center space-x-1.5 mb-2">
@@ -529,7 +494,7 @@ export default function FormPelaporanPage() {
               <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 flex items-start space-x-2.5 max-w-xl text-xs text-slate-600">
                 <Info size={18} className="text-blue-500 shrink-0 mt-0.5" />
                 <p>
-                  <strong className="text-slate-800">Catatan Otomatis:</strong> Laporan yang disubmit akan langsung Dilakukan Perbaikan ke Departemen Teknik.
+                  <strong className="text-slate-800">Alur Verifikasi:</strong> Laporan akan masuk ke MCC untuk diperiksa. MCC menentukan validitas dan prioritas (P1 Urgent, P2 Medium, atau P3 Basic). Setelah disetujui, laporan diteruskan ke Departemen Teknik.
                 </p>
               </div>
 

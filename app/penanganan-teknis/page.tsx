@@ -258,6 +258,16 @@
             >
               Form Pelaporan
             </Link>
+
+            <Link
+            href="/verifikasi-mcc"
+            className={`px-5 py-2 rounded-full transition font-semibold ${
+              pathname === "/verifikasi-mcc" ? "bg-white text-[#0b3c3c] shadow" : "text-slate-300 hover:text-white"
+            }`}
+          >
+            Approval MCC
+          </Link>
+
             <Link
               href="/dasboard"
               className={`px-5 py-2 rounded-full transition font-semibold ${
@@ -403,14 +413,6 @@
                 <RefreshCw size={14} />
                 <span>Refresh Data</span>
               </button>
-
-              <button
-                onClick={() => setShowAddWOModal(true)}
-                className="bg-[#0e5c75] hover:bg-[#0b485c] text-white px-4 py-2 rounded-lg text-xs font-semibold flex items-center space-x-1.5 transition shadow-sm"
-              >
-                <Plus size={16} />
-                <span>Tambah Work Order Manual</span>
-              </button>
             </div>
           </div>
 
@@ -525,7 +527,7 @@
           {/* Kanban Board Layout */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* KOLOM 1: MENUNGGU PENANGANAN */}
-            <div className="bg-slate-200/50 p-4 rounded-xl border border-slate-200 flex flex-col min-h-450px">
+            <div className="bg-slate-200/50 p-4 rounded-xl border border-slate-200 flex flex-col h-450px min-h-0">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-red-500"></span>
@@ -536,7 +538,7 @@
                 </div>
               </div>
 
-              <div className="space-y-3.5 flex-1 flex flex-col">
+              <div className="space-y-3.5 flex-1 min-h-0 overflow-y-auto pr-2 flex flex-col">
                 {tiketMenunggu.length === 0 ? (
                   <div className="bg-white/80 rounded-xl p-8 text-center text-xs text-slate-400 border border-dashed border-slate-300 my-auto flex flex-col items-center justify-center">
                     <FileText className="mb-2 text-slate-300" size={28} />
@@ -592,7 +594,7 @@
             </div>
 
             {/* KOLOM 2: SEDANG DIKERJAKAN */}
-            <div className="bg-slate-200/50 p-4 rounded-xl border border-slate-200 flex flex-col min-h-450px">
+            <div className="bg-slate-200/50 p-4 rounded-xl border border-slate-200 flex flex-col h-450px min-h-0">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
@@ -603,7 +605,7 @@
                 </div>
               </div>
 
-              <div className="space-y-3.5 flex-1 flex flex-col">
+              <div className="space-y-3.5 flex-1 min-h-0 overflow-y-auto pr-2 flex flex-col">
                 {tiketDikerjakan.length === 0 ? (
                   <div className="bg-white/80 rounded-xl p-8 text-center text-xs text-slate-400 border border-dashed border-slate-300 my-auto flex flex-col items-center justify-center">
                     <Clock className="mb-2 text-slate-300" size={28} />
@@ -669,7 +671,7 @@
             </div>
 
             {/* KOLOM 3: SELESAI HARI INI */}
-            <div className="bg-slate-200/50 p-4 rounded-xl border border-slate-200 flex flex-col min-h-450px">
+            <div className="bg-slate-200/50 p-4 rounded-xl border border-slate-200 flex flex-col h-450px min-h-0">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center space-x-2">
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
@@ -680,7 +682,7 @@
                 </div>
               </div>
 
-              <div className="space-y-3.5 flex-1 flex flex-col">
+              <div className="space-y-3.5 flex-1 min-h-0 overflow-y-auto pr-2 flex flex-col">
                 {tiketSelesai.length === 0 ? (
                   <div className="bg-white/80 rounded-xl p-8 text-center text-xs text-slate-400 border border-dashed border-slate-300 my-auto flex flex-col items-center justify-center">
                     <CheckCircle2 className="mb-2 text-slate-300" size={28} />
