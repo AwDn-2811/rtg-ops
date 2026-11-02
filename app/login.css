@@ -1,4 +1,3 @@
-
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
 
 /* Semua variabel dan layout khusus login */
@@ -109,13 +108,6 @@
   color: #102b49;
 }
 
-.login-page .brand h1 {
-  font-size: 25px;
-  font-weight: 800;
-  letter-spacing: -0.8px;
-  line-height: 1.25;
-}
-
 .login-page .brand-subtitle {
   margin-top: 7px;
   font-size: 9px;
@@ -206,15 +198,27 @@
   cursor: pointer;
 }
 
-.login-page .forgot-link {
+.login-page .forgot-button-link {
+  border: none;
+  background: transparent;
   color: #172e47;
-  text-decoration: none;
-  white-space: nowrap;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 0;
 }
 
-.login-page .forgot-link:hover,
-.login-page .register-text a:hover {
+.login-page .forgot-button-link:hover,
+.login-page .contact-admin-btn:hover {
   text-decoration: underline;
+}
+
+/* Error Message */
+.login-page .login-error {
+  color: #dc2626;
+  font-size: 11px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  text-align: center;
 }
 
 /* Login Button */
@@ -241,7 +245,73 @@
   transform: scale(0.99);
 }
 
-/* Register */
+.login-page .login-button:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* ================= STYLING FORGOT PASSWORD ================= */
+.login-page .forgot-form {
+  display: flex;
+  flex-direction: column;
+}
+
+.login-page .forgot-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.login-page .back-to-login {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border: none;
+  background: transparent;
+  color: #526273;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.login-page .back-to-login:hover {
+  color: #102b49;
+}
+
+.login-page .forgot-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #102b49;
+}
+
+.login-page .forgot-success-box {
+  padding: 16px;
+  background: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  border-radius: 10px;
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.login-page .success-icon {
+  color: #059669;
+  margin: 0 auto 6px;
+}
+
+.login-page .success-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: #065f46;
+}
+
+.login-page .success-desc {
+  font-size: 11px;
+  color: #047857;
+  margin-top: 4px;
+}
+
+/* Register & Contact Admin */
 .login-page .register-text {
   margin-top: 20px;
   text-align: center;
@@ -250,10 +320,159 @@
   color: #344c60;
 }
 
-.login-page .register-text a {
+.login-page .contact-admin-btn {
+  border: none;
+  background: transparent;
   color: #102b49;
-  font-weight: 600;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0;
+}
+
+/* ================= MODAL CONTACT ADMINISTRATOR ================= */
+.login-page .modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+  background: rgba(8, 24, 38, 0.65);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+
+.login-page .contact-modal {
+  width: 100%;
+  max-width: 380px;
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 22px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.25);
+  animation: modalIn 0.2s ease-out forwards;
+}
+
+@keyframes modalIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.login-page .modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.login-page .modal-header-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.login-page .modal-icon-bg {
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: #e0f2fe;
+  color: #0284c7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.login-page .modal-header h3 {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.login-page .modal-header p {
+  font-size: 10px;
+  color: #64748b;
+}
+
+.login-page .close-modal-btn {
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+}
+
+.login-page .close-modal-btn:hover {
+  color: #334155;
+  background: #f1f5f9;
+}
+
+.login-page .modal-body {
+  margin-top: 14px;
+}
+
+.login-page .modal-desc {
+  font-size: 11px;
+  color: #475569;
+  line-height: 1.5;
+  margin-bottom: 12px;
+}
+
+.login-page .contact-info-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.login-page .info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+}
+
+.login-page .info-label {
+  color: #64748b;
+}
+
+.login-page .info-value {
+  font-weight: 700;
+  color: #1e293b;
+}
+
+.login-page .info-value.highlight {
+  color: #0284c7;
+}
+
+.login-page .whatsapp-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 40px;
+  background: #10b981;
+  color: #ffffff;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
   text-decoration: none;
+  transition: background 0.2s;
+}
+
+.login-page .whatsapp-btn:hover {
+  background: #059669;
 }
 
 /* Footer */
@@ -271,7 +490,6 @@
 @media (max-width: 480px) {
   .login-page {
     padding: 24px 18px;
-    background-position: center;
   }
 
   .login-page .brand {
@@ -280,8 +498,8 @@
   }
 
   .login-page .brand-logo {
-    width: 78px;
-    height: 78px;
+    width: 120px;
+    height: 55px;
   }
 
   .login-page .brand-info h1 {
@@ -298,10 +516,6 @@
     padding: 28px 22px;
   }
 
-  .login-page .brand h1 {
-    font-size: 26px;
-  }
-
   .login-page .input-group {
     height: 44px;
   }
@@ -312,17 +526,5 @@
 
   .login-page .login-button {
     height: 45px;
-  }
-}
-
-/* Landscape Mobile */
-@media (max-height: 520px) and (orientation: landscape) {
-  .login-page {
-    align-items: flex-start;
-    overflow-y: auto;
-  }
-
-  .login-page .login-card {
-    margin: 10px 0 28px;
   }
 }
