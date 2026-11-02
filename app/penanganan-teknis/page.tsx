@@ -3,6 +3,7 @@
   import React, { useState, useEffect } from "react";
   import Link from "next/link";
   import { useRouter, usePathname } from "next/navigation";
+  import { createClient } from "@/lib/supabase/client";
   import {
     Bell,
     User,
@@ -55,6 +56,72 @@
     const [selectedBlokFilter, setSelectedBlokFilter] = useState("SEMUA");
     const [selectedUrgensiFilter, setSelectedUrgensiFilter] = useState("SEMUA");
     const [selectedTimFilter, setSelectedTimFilter] = useState("SEMUA");
+
+    // Supabase Client
+      const supabase = createClient();
+      const [role, setRole] = useState<string | null>(null);
+      const [profileLoading, setProfileLoading] = useState(true);
+
+      useEffect(() => {
+        let isMounted = true;
+      
+        async function checkAccess() {
+          try {
+            const {
+              data: { user },
+              error: authError,
+            } = await supabase.auth.getUser();
+      
+            if (authError || !user) {
+              router.replace("/");
+              return;
+            }
+      
+            const { data: profile, error: profileError } =
+              await supabase
+                .from("profiles")
+                .select("role, is_active")
+                .eq("id", user.id)
+                .single();
+      
+            if (
+              profileError ||
+              !profile ||
+              !profile.is_active
+            ) {
+              await supabase.auth.signOut();
+              router.replace("/");
+              return;
+            }
+      
+            // Halaman Form Pelaporan hanya untuk admin dan operator
+            const allowedRoles = ["admin", "teknisi"];
+      
+            if (!allowedRoles.includes(profile.role)) {
+              router.replace("/dasboard");
+              return;
+            }
+      
+            if (isMounted) {
+              setRole(profile.role);
+            }
+          } catch (error) {
+            console.error("Gagal memeriksa akses:", error);
+      
+            router.replace("/");
+          } finally {
+            if (isMounted) {
+              setProfileLoading(false);
+            }
+          }
+        }
+      
+        checkAccess();
+      
+        return () => {
+          isMounted = false;
+        };
+      }, [router, supabase]);
 
     // State Pop-up Notifikasi & Profil
     const [showNotif, setShowNotif] = useState(false);
@@ -250,41 +317,60 @@
           </div>
 
           <nav className="flex items-center space-x-2 bg-[#082e2e] p-1.5 rounded-full text-xs shadow-inner">
-            <Link
-              href="/form-pelaporan"
-              className={`px-5 py-2 rounded-full transition font-semibold ${
-                pathname === "/form-pelaporan" ? "bg-white text-[#0b3c3c] shadow" : "text-slate-300 hover:text-white"
-              }`}
-            >
-              Form Pelaporan
-            </Link>
 
-            <Link
-            href="/verifikasi-mcc"
-            className={`px-5 py-2 rounded-full transition font-semibold ${
-              pathname === "/verifikasi-mcc" ? "bg-white text-[#0b3c3c] shadow" : "text-slate-300 hover:text-white"
-            }`}
-          >
-            Approval MCC
-          </Link>
+            {(role === "admin" || role === "operator") && (
+              <Link
+                href="/form-pelaporan"
+                className={`px-5 py-2 rounded-full transition font-semibold ${
+                  pathname === "/form-pelaporan"
+                    ? "bg-white text-[#0b3c3c] shadow"
+                    : "text-slate-300 hover:text-white"
+                }`}
+              >
+                Form Pelaporan
+              </Link>
+            )}
 
+            {/* Approval MCC: Admin dan MCC */}
+            {(role === "admin" || role === "mcc") && (
+              <Link
+                href="/verifikasi-mcc"
+                className={`px-5 py-2 rounded-full transition font-semibold ${
+                  pathname === "/verifikasi-mcc"
+                    ? "bg-white text-[#0b3c3c] shadow"
+                    : "text-slate-300 hover:text-white"
+                }`}
+              >
+                Approval MCC
+              </Link>
+            )}
+
+            {/* Dashboard: Semua Role */}
             <Link
               href="/dasboard"
               className={`px-5 py-2 rounded-full transition font-semibold ${
-                pathname === "/dasboard" ? "bg-white text-[#0b3c3c] shadow" : "text-slate-300 hover:text-white"
+                pathname === "/dasboard"
+                  ? "bg-white text-[#0b3c3c] shadow"
+                  : "text-slate-300 hover:text-white"
               }`}
             >
               Dashboard Monitoring
             </Link>
-            <Link
-              href="/penanganan-teknis"
-              className={`px-5 py-2 rounded-full transition font-semibold ${
-                pathname === "/penanganan-teknis" ? "bg-white text-[#0b3c3c] shadow" : "text-slate-300 hover:text-white"
-              }`}
-            >
-              Penanganan Teknis
-            </Link>
-          </nav>
+
+            {/* Penanganan Teknisi: Admin dan Teknisi */}
+            {(role === "admin" || role === "teknisi") && (
+              <Link
+                href="/penanganan-teknis"
+                className={`px-5 py-2 rounded-full transition font-semibold ${
+                  pathname === "/penanganan-teknis"
+                    ? "bg-white text-[#0b3c3c] shadow"
+                    : "text-slate-300 hover:text-white"
+                }`}
+              >
+                Penanganan Teknisi
+              </Link>
+            )}
+        </nav>
 
           {/* Notifikasi & Profile Pop-up */}
           <div className="flex items-center space-x-4">
