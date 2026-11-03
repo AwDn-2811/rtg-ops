@@ -215,7 +215,9 @@
         (r.prioritas?.includes("CRITICAL") || r.prioritas?.includes("KRITIS") || r.prioritas?.includes("P1") || r.prioritas?.includes("EMERGENCY"))
     ).length;
 
-    const totalWorkOrder = reports.length;
+    const totalWorkOrder = reports.filter(
+      (r) => r.status !== "DITOLAK MCC"
+    ).length;
 
     const teknisiAktifSet = new Set(
       reports

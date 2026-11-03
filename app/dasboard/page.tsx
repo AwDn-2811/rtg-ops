@@ -35,6 +35,14 @@ interface Report {
   teknisi?: string;
 }
 
+interface RTGStatus {
+  id: number;
+  unit_code: string;
+  status: string;
+  block: string | null;
+  last_updated: string;
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const pathname = usePathname();
@@ -43,6 +51,10 @@ export default function DashboardPage() {
   const [selectedKategoriFilter, setSelectedKategoriFilter] = useState("SEMUA");
   const [showNotif, setShowNotif] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+
+  // State untuk RTG Status dari Supabase
+  const [rtgStatuses, setRtgStatuses] = useState<RTGStatus[]>([]);
+  const [rtgLoading, setRtgLoading] = useState(true);
 
   // Supabase client
   const supabase = createClient();
@@ -109,6 +121,39 @@ export default function DashboardPage() {
       };
   }, [router, supabase]);
 
+  // Ambil data RTG Status dari Supabase
+  useEffect(() => {
+    let isMounted = true;
+
+    async function fetchRTGStatuses() {
+      const { data, error } = await supabase
+        .from("rtg_statuses")
+        .select("id, unit_code, status, block, last_updated")
+        .order("unit_code", { ascending: true });
+
+      if (error) {
+        console.error("Gagal mengambil data RTG:", error.message);
+
+        if (isMounted) {
+          setRtgLoading(false);
+        }
+
+        return;
+      }
+
+      if (isMounted) {
+        setRtgStatuses(data ?? []);
+        setRtgLoading(false);
+      }
+    }
+
+    fetchRTGStatuses();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [supabase]);
+
   // State untuk Modal Detail Tiket (ST)
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -134,24 +179,30 @@ export default function DashboardPage() {
     return matchesSearch && matchesKategori;
   });
 
-  const reportedRtgSet = new Set(reports.map((r) => r.rtg));
+    // Buat array untuk menampilkan status unit RTG di grid
+    const rtgUnits = rtgStatuses.map((item) => {
+      const isRepair =
+        item.status?.toUpperCase() === "NEED_REPAIR" ||
+        item.status?.toUpperCase() === "PERBAIKAN";
 
-  const rtgUnits = Array.from({ length: 35 }, (_, i) => {
-    const unitName = `RTG ${38 + i}`;
-    const isReported = reportedRtgSet.has(unitName);
-    const reportData = reports.find((r) => r.rtg === unitName);
+      return {
+        id: item.unit_code,
+        status: isRepair ? "PERBAIKAN" : "NORMAL",
+        prioritas: "MEDIUM P3",
+        badge: undefined,
+        sub: isRepair ? "Perlu Perbaikan" : "Tanpa laporan aktif",
+      };
+    });
 
-    return {
-      id: unitName,
-      status: isReported ? "PERBAIKAN" : "NORMAL",
-      prioritas: reportData?.prioritas || "MEDIUM P3",
-      badge: isReported ? `A ${reportData?.prioritas || "Perlu tindakan"}` : undefined,
-      sub: isReported ? `Tiket: ${reportData?.kategori || "Perlu Perbaikan"}` : "Tanpa laporan aktif",
-    };
-  });
+    const totalPerbaikan = rtgStatuses.filter(
+      (item) =>
+        item.status?.toUpperCase() === "NEED_REPAIR" ||
+        item.status?.toUpperCase() === "PERBAIKAN"
+    ).length;
 
-  const totalPerbaikan = reportedRtgSet.size;
-  const totalNormal = 35 - totalPerbaikan;
+    const totalNormal = rtgStatuses.filter(
+      (item) => item.status?.toUpperCase() === "READY"
+    ).length;
 
   // Hitung jumlah laporan per unit untuk grafik
   const rtgCounts: Record<string, number> = {};

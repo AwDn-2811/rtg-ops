@@ -535,7 +535,6 @@ export default function FormPelaporanPage() {
               <div>
                 <div className="flex justify-between items-center mb-1">
                   <label className="text-xs font-bold text-slate-700">Nomor RTG *</label>
-                  <span className="text-[11px] text-slate-400">Kamera Yard Aktif</span>
                 </div>
                 <div className="relative">
                   <select
