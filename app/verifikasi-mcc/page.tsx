@@ -368,10 +368,17 @@
       <div className="min-h-screen bg-slate-100 text-slate-800 font-sans text-xs pb-10">
         {/* Header / Navbar */}
         <header className="bg-[#0b3c3c] text-white px-8 py-3.5 flex items-center justify-between shadow-md relative z-50">
-          <div className="flex items-center space-x-3.5">
-            <div className="bg-emerald-600 p-2 rounded-lg shadow-sm">
-              <span className="font-extrabold text-sm uppercase tracking-wider text-white">RTG</span>
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center">
+              <img
+                src="\images\logopelindo.png"
+                alt="Logo Pelindo"
+                width={48}
+                height={48}
+                className="object-contain"
+              />
             </div>
+            
             <div>
               <h1 className="font-bold text-base leading-none tracking-tight flex items-center space-x-2">
                 <span>PELAPORAN RTG</span>
