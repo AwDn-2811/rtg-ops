@@ -131,10 +131,10 @@ export default function FormPelaporanPage() {
   }, []);
 
   const rtgBlockMap: Record<string, string> = {
-    "RTG 38": "Blok A - Bay 04",
-    "RTG 52": "Blok C - Bay 02",
-    "RTG 40": "Blok B - Bay 01",
-    "RTG 60": "Blok D - Bay 05",
+    "RTG 38": "Block A - Bay 04",
+    "RTG 52": "Block C - Bay 02",
+    "RTG 40": "Block B - Bay 01",
+    "RTG 60": "Block D - Bay 05",
   };
 
   const rtgOptions = Array.from({ length: 35 }, (_, i) => 38 + i);
@@ -160,7 +160,7 @@ export default function FormPelaporanPage() {
     if (rtgBlockMap[val]) {
       setLokasiBlok(rtgBlockMap[val]);
     } else if (val !== "") {
-      setLokasiBlok("BLOK A - Bay Standard");
+      setLokasiBlok("Block A - Bay Standard");
     } else {
       setLokasiBlok("");
     }
@@ -193,7 +193,7 @@ export default function FormPelaporanPage() {
     setFilePreviews(previews);
   };
 
-  // HANDLER SUBMIT DENGAN ANIMASI CRANE JALAN 10 DETIK
+ // HANDLER SUBMIT DENGAN INTEGRASI SUPABASE DATABASE & ANIMASI CRANE JALAN 5 DETIK
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nomorRtg || !deskripsiKendala) {
@@ -206,7 +206,7 @@ export default function FormPelaporanPage() {
     setProgressPercent(0);
 
     const startTime = Date.now();
-    const totalDuration = 10000; // 10 Detik
+    const totalDuration = 5000; // 5 Detik animasi
     const progressInterval = setInterval(() => {
       const elapsed = Date.now() - startTime;
       const pct = Math.min(Math.round((elapsed / totalDuration) * 100), 100);
@@ -225,32 +225,77 @@ export default function FormPelaporanPage() {
 
     setTimeout(async () => {
       try {
+        // 1. Dapatkan data User yang sedang Login
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (userError || !user) {
+          throw new Error("Pengguna tidak terautentikasi.");
+        }
+
+        // 2.Pastikan format unit_code sesuai dengan isi database (misal "RTG 38")
+        const formattedUnitCode = nomorRtg.startsWith("RTG") ? nomorRtg : `RTG ${nomorRtg}`;
+
+        // 3. Ambil ID dari unit RTG di tabel `rtg_statuses'
+        const { data: rtgUnitData, error: rtgFetchError } = await supabase
+        .from("rtg_statuses")
+        .select("id")
+        .ilike("unit_code", formattedUnitCode)
+        .maybeSingle();
+
+        if (rtgFetchError || !rtgUnitData) {
+           console.error("Gagal menemukan unit RTG di database:", rtgFetchError?.message);
+           alert(`Unit ${formattedUnitCode} tidak ditemukan di database rtg_statuses.`);
+           setIsSubmitting(false);
+           return;
+        }
+
+        // 4. Simpan Ke Tabel Supabase `rtg_reports`
+
+        const { error: insertReportError } = await supabase
+        .from("rtg_reports")
+        .insert([
+          {
+            rtg_id: rtgUnitData.id,
+            pelapor_id: user.id,
+            report_date: new Date().toISOString(),
+            findings: deskripsiKendala,
+            verification_status: "PENDING", // Menggunakan nilai yang lolos Check Constraint
+            priority: 3,
+          },
+        ]);
+
+        if (insertReportError) {
+          console.error("Gagal simpan ke rtg_reports:", insertReportError.message);
+          alert(`Gagal menyimpan laporan: ${insertReportError.message}`);
+        } 
+        else {
+          console.log("Berhasil menyimpan laporan ke rtg_reports!");
+        }
+
+        // 5. OTOMATIS UPDATE Status di tabel `rtg_statuses` dari READY -> NEED_REPAIR
+        const { error: updateRtgStatusError } = await supabase
+          .from("rtg_statuses")
+          .update({
+            status: "NEED_REPAIR",
+            block: lokasiBlok || "BLOK A",
+            last_updated: new Date().toISOString(),
+          })
+          .eq("id", rtgUnitData.id);
+
+        if (updateRtgStatusError) {
+          console.error("Gagal update status RTG:", updateRtgStatusError.message);
+        }
+
+        // 6. Simpan juga ke localStorage sebagai fallback / sync data sementara frontend
         const mediaBase64Promises = selectedFiles.map((file) => {
           return new Promise<{ type: string; url: string; name: string }>((resolve) => {
             const isVideo = file.type.startsWith("video/");
-
             if (file.size > 1.5 * 1024 * 1024) {
-              resolve({
-                type: isVideo ? "video" : "image",
-                url: "",
-                name: file.name,
-              });
+              resolve({ type: isVideo ? "video" : "image", url: "", name: file.name });
               return;
             }
-
             const reader = new FileReader();
-            reader.onload = () =>
-              resolve({
-                type: isVideo ? "video" : "image",
-                url: reader.result as string,
-                name: file.name,
-              });
-            reader.onerror = () =>
-              resolve({
-                type: isVideo ? "video" : "image",
-                url: "",
-                name: file.name,
-              });
+            reader.onload = () => resolve({ type: isVideo ? "video" : "image", url: reader.result as string, name: file.name });
+            reader.onerror = () => resolve({ type: isVideo ? "video" : "image", url: "", name: file.name });
             reader.readAsDataURL(file);
           });
         });
@@ -261,7 +306,7 @@ export default function FormPelaporanPage() {
           id: Date.now(),
           tanggal,
           jam: new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) + " WIB",
-          rtg: nomorRtg,
+          rtg: formattedUnitCode,
           lokasi: lokasiBlok || "BLOK A",
           pelapor: "Supervisi Lapangan",
           praOperasi: deskripsiKendala,
@@ -276,17 +321,16 @@ export default function FormPelaporanPage() {
         };
 
         const existingReports = JSON.parse(localStorage.getItem("rtg_reports") || "[]");
-
-        try {
-          localStorage.setItem("rtg_reports", JSON.stringify([newReport, ...existingReports]));
-        } catch (storageError) {
-          localStorage.setItem("rtg_reports", JSON.stringify([newReport]));
+          try {
+            localStorage.setItem("rtg_reports", JSON.stringify([newReport, ...existingReports]));
+          } catch (storageError) {
+            localStorage.setItem("rtg_reports", JSON.stringify([newReport]));
         }
 
         setIsSubmitting(false);
         setIsSuccess(true);
       } catch (error) {
-        console.error("Gagal mengunggah berkas:", error);
+        console.error("Gagal memproses laporan:", error);
         setIsSubmitting(false);
         alert("Terjadi kesalahan saat memproses laporan.");
       }
@@ -825,7 +869,7 @@ export default function FormPelaporanPage() {
                   </div>
                   <div className="flex justify-between items-center text-slate-400 pb-1.5 border-b border-slate-800">
                     <span>Lokasi Terdeteksi:</span>
-                    <span className="font-bold text-slate-200">{lokasiBlok || "Blok A"}</span>
+                    <span className="font-bold text-slate-200">{lokasiBlok || "Block A"}</span>
                   </div>
                   <div className="flex justify-between items-center text-slate-400">
                     <span>Status Tiket:</span>

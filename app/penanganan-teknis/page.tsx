@@ -12,7 +12,6 @@
     FileText,
     AlertOctagon,
     Ticket,
-    Clock,
     Users,
     Search,
     CheckCircle2,
@@ -604,11 +603,6 @@
                 <option value="Elektrikal">Tim Elektrikal/Genset</option>
               </select>
 
-              <span className="bg-blue-50 border border-blue-200 text-blue-700 text-[11px] font-medium px-2.5 py-1.5 rounded-lg flex items-center space-x-1">
-                <Clock size={12} />
-                <span>Filter Aktif: Shift 1 Pagi</span>
-              </span>
-
               <button
                 onClick={handleResetFilter}
                 className="text-slate-500 hover:text-slate-800 text-xs font-semibold px-2 py-1 transition"
@@ -702,7 +696,6 @@
               <div className="space-y-3.5 flex-1 min-h-0 overflow-y-auto pr-2 flex flex-col">
                 {tiketDikerjakan.length === 0 ? (
                   <div className="bg-white/80 rounded-xl p-8 text-center text-xs text-slate-400 border border-dashed border-slate-300 my-auto flex flex-col items-center justify-center">
-                    <Clock className="mb-2 text-slate-300" size={28} />
                     <span>Tidak ada unit sedang dikerjakan.</span>
                   </div>
                 ) : (

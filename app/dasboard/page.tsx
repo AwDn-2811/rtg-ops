@@ -17,7 +17,10 @@ import {
   Download,
   Trash2,
   LogOut,
-  X
+  X,
+  Wrench,
+  MapPin,
+  ShieldCheck
 } from "lucide-react";
 
 interface Report {
@@ -43,6 +46,17 @@ interface RTGStatus {
   last_updated: string;
 }
 
+// Interface untuk data card yang diklik
+interface RTGCardItem {
+  id: string; // unit_code, misal "RTG 50"
+  status: "NORMAL" | "PERBAIKAN";
+  prioritas?: string;
+  sub: string;
+  block?: string | null;
+  lastUpdated?: string;
+  reportDetails?: Report | null;
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const pathname = usePathname();
@@ -55,6 +69,10 @@ export default function DashboardPage() {
   // State untuk RTG Status dari Supabase
   const [rtgStatuses, setRtgStatuses] = useState<RTGStatus[]>([]);
   const [rtgLoading, setRtgLoading] = useState(true);
+
+  // State untuk Modal Klik Card RTG
+  const [selectedRtgCard, setSelectedRtgCard] = useState<RTGCardItem | null>(null);
+  const [showRtgModal, setShowRtgModal] = useState(false);
 
   // Supabase client
   const supabase = createClient();
@@ -93,7 +111,6 @@ export default function DashboardPage() {
           return;
         }
 
-        // Sesuaikan role yang boleh mengakses halaman
         const allowedRoles = ["admin", "operator", "mcc", "teknisi"];
 
         if (!allowedRoles.includes(profile.role)) {
@@ -116,12 +133,12 @@ export default function DashboardPage() {
 
     checkAccess();
 
-      return () => {
-        isMounted = false;
-      };
+    return () => {
+      isMounted = false;
+    };
   }, [router, supabase]);
 
-  // Ambil data RTG Status dari Supabase
+  // Ambil data RTG Status dari Supabase + Realtime Subscription
   useEffect(() => {
     let isMounted = true;
 
@@ -133,11 +150,9 @@ export default function DashboardPage() {
 
       if (error) {
         console.error("Gagal mengambil data RTG:", error.message);
-
         if (isMounted) {
           setRtgLoading(false);
         }
-
         return;
       }
 
@@ -149,12 +164,29 @@ export default function DashboardPage() {
 
     fetchRTGStatuses();
 
+    // Setup Realtime Sync jika ada update status di tabel rtg_statuses
+    const channel = supabase
+      .channel("rtg_statuses_dashboard")
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "rtg_statuses" },
+        (payload) => {
+          setRtgStatuses((prev) =>
+            prev.map((item) =>
+              item.id === payload.new.id ? { ...item, ...payload.new } : item
+            )
+          );
+        }
+      )
+      .subscribe();
+
     return () => {
       isMounted = false;
+      supabase.removeChannel(channel);
     };
   }, [supabase]);
 
-  // State untuk Modal Detail Tiket (ST)
+  // State untuk Modal Detail Tiket Tabel (ST)
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
 
@@ -179,30 +211,45 @@ export default function DashboardPage() {
     return matchesSearch && matchesKategori;
   });
 
-    // Buat array untuk menampilkan status unit RTG di grid
-    const rtgUnits = rtgStatuses.map((item) => {
-      const isRepair =
-        item.status?.toUpperCase() === "NEED_REPAIR" ||
-        item.status?.toUpperCase() === "PERBAIKAN";
+  // Pemetaan rtgUnits gabungan Supabase & Laporan aktif
+  const rtgUnits = rtgStatuses.map((item) => {
+    const isRepair =
+      item.status?.toUpperCase() === "NEED_REPAIR" ||
+      item.status?.toUpperCase() === "PERBAIKAN";
 
-      return {
-        id: item.unit_code,
-        status: isRepair ? "PERBAIKAN" : "NORMAL",
-        prioritas: "MEDIUM P3",
-        badge: undefined,
-        sub: isRepair ? "Perlu Perbaikan" : "Tanpa laporan aktif",
-      };
-    });
+    // Cari laporan aktif terkini untuk unit RTG ini jika ada
+    const activeReport = reports.find(
+      (r) => r.rtg.toUpperCase() === item.unit_code.toUpperCase()
+    );
 
-    const totalPerbaikan = rtgStatuses.filter(
-      (item) =>
-        item.status?.toUpperCase() === "NEED_REPAIR" ||
-        item.status?.toUpperCase() === "PERBAIKAN"
-    ).length;
+    return {
+      id: item.unit_code,
+      status: (isRepair ? "PERBAIKAN" : "NORMAL") as "NORMAL" | "PERBAIKAN",
+      prioritas: activeReport?.prioritas || "MEDIUM P3",
+      sub: isRepair ? "Perlu Perbaikan" : "Tanpa laporan aktif",
+      block: item.block,
+      lastUpdated: item.last_updated,
+      reportDetails: activeReport || null,
+    };
+  });
 
-    const totalNormal = rtgStatuses.filter(
-      (item) => item.status?.toUpperCase() === "READY"
-    ).length;
+  const totalPerbaikan = rtgStatuses.filter(
+    (item) =>
+      item.status?.toUpperCase() === "NEED_REPAIR" ||
+      item.status?.toUpperCase() === "PERBAIKAN"
+  ).length;
+
+  const totalNormal = rtgStatuses.filter(
+    (item) =>
+      item.status?.toUpperCase() === "READY" ||
+      item.status?.toUpperCase() === "NORMAL"
+  ).length;
+
+  // Handler saat Card RTG Diklik
+  const handleCardClick = (unit: RTGCardItem) => {
+    setSelectedRtgCard(unit);
+    setShowRtgModal(true);
+  };
 
   // Hitung jumlah laporan per unit untuk grafik
   const rtgCounts: Record<string, number> = {};
@@ -211,7 +258,7 @@ export default function DashboardPage() {
   });
 
   const chartData = Object.keys(rtgCounts).map((key) => ({
-    label: key, // Menggunakan label lengkap "RTG XX"
+    label: key,
     value: rtgCounts[key],
   }));
 
@@ -257,7 +304,6 @@ export default function DashboardPage() {
 
     const worksheet = XLSX.utils.json_to_sheet(excelData);
     const columnWidths = [6, 14, 12, 14, 16, 23, 18, 25, 45, 22, 31];
-
     worksheet["!cols"] = columnWidths.map((wch) => ({ wch }));
 
     const range = XLSX.utils.decode_range(worksheet["!ref"]!);
@@ -315,9 +361,7 @@ export default function DashboardPage() {
   if (profileLoading || !role) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-100">
-        <p className="text-sm text-slate-500">
-          Memeriksa hak akses...
-        </p>
+        <p className="text-sm text-slate-500">Memeriksa hak akses...</p>
       </div>
     );
   }
@@ -329,7 +373,7 @@ export default function DashboardPage() {
         <div className="flex items-center gap-3">
           <div className="flex h-12 w-12 items-center justify-center">
             <img
-              src="\images\logopelindo.png"
+              src="/images/logopelindo.png"
               alt="Logo Pelindo"
               width={48}
               height={48}
@@ -344,7 +388,6 @@ export default function DashboardPage() {
 
         {/* Navigasi Header */}
         <nav className="flex items-center space-x-2 bg-[#082e2e] p-1.5 rounded-full text-xs shadow-inner">
-
           {(role === "admin" || role === "operator") && (
             <Link
               href="/form-pelaporan"
@@ -358,7 +401,6 @@ export default function DashboardPage() {
             </Link>
           )}
 
-          {/* Approval MCC: Admin dan MCC */}
           {(role === "admin" || role === "mcc") && (
             <Link
               href="/verifikasi-mcc"
@@ -372,7 +414,6 @@ export default function DashboardPage() {
             </Link>
           )}
 
-          {/* Dashboard: Semua Role */}
           <Link
             href="/dasboard"
             className={`px-5 py-2 rounded-full transition font-semibold ${
@@ -384,7 +425,6 @@ export default function DashboardPage() {
             Dashboard Monitoring
           </Link>
 
-          {/* Penanganan Teknisi: Admin dan Teknisi */}
           {(role === "admin" || role === "teknisi") && (
             <Link
               href="/penanganan-teknis"
@@ -432,7 +472,9 @@ export default function DashboardPage() {
                           <span className="font-bold text-red-600">{item.rtg}</span>
                           <span className="text-[10px] text-slate-400">{item.jam}</span>
                         </div>
-                        <p className="text-slate-600 text-[11px] line-clamp-2">{item.praOperasi !== "-" ? item.praOperasi : item.pascaOperasi}</p>
+                        <p className="text-slate-600 text-[11px] line-clamp-2">
+                          {item.praOperasi !== "-" ? item.praOperasi : item.pascaOperasi}
+                        </p>
                       </div>
                     ))
                   )}
@@ -531,7 +573,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Top Summary Cards (TULISAN MERAH DIHAPUS, BERSIH) */}
+        {/* Top Summary Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div className="bg-white p-4 rounded-xl border border-slate-200 flex justify-between items-start shadow-sm">
             <div>
@@ -559,7 +601,7 @@ export default function DashboardPage() {
             <div>
               <p className="text-xs text-slate-500 font-medium">Laporan Hari Ini</p>
               <h3 className="text-2xl font-bold mt-1 text-slate-800">{reports.length} <span className="text-xs font-normal text-slate-500">laporan masuk</span></h3>
-              <p className="text-[11px] text-blue-600 mt-2 font-medium">• Shift A & Shift B Terhubung</p>
+              <p className="text-[11px] text-blue-600 mt-2 font-medium">Shift A & Shift B Terhubung</p>
             </div>
             <div className="p-2 bg-blue-50 text-blue-500 rounded-lg"><FileText size={20} /></div>
           </div>
@@ -570,24 +612,34 @@ export default function DashboardPage() {
           <div className="flex justify-between items-center mb-4">
             <div>
               <h3 className="font-bold text-base text-slate-800">Status Unit RTG (Layout Area)</h3>
-              <p className="text-xs text-slate-400">Pemetaan sebaran unit di blok Container Yard (RTG 38 s/d RTG 72)</p>
+              <p className="text-xs text-slate-400">Pemetaan sebaran unit di blok Container Yard (Klik unit untuk lihat detail)</p>
             </div>
             <div className="flex items-center space-x-4 text-xs font-medium">
-              <span className="flex items-center space-x-1.5"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span><span className="text-slate-600">Normal/Ready</span> <span className="text-slate-400">{totalNormal} Unit</span></span>
-              <span className="flex items-center space-x-1.5"><span className="w-2.5 h-2.5 rounded-full bg-red-500"></span><span className="text-slate-600">Perlu Perbaikan</span> <span className="text-slate-400">{totalPerbaikan} Unit</span></span>
+              <span className="flex items-center space-x-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                <span className="text-slate-600">Normal/Ready</span> 
+                <span className="text-slate-400">{totalNormal} Unit</span>
+              </span>
+              <span className="flex items-center space-x-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-yellow-500"></span>
+                <span className="text-slate-600">Perlu Perbaikan</span> 
+                <span className="text-slate-400">{totalPerbaikan} Unit</span>
+              </span>
             </div>
           </div>
 
+          {/* GRID CARD RTG DENGAN HANDLER KLIK */}
           <div className="grid grid-cols-7 gap-3">
             {rtgUnits.map((item) => (
               <div 
                 key={item.id} 
-                className={`p-3 rounded-lg border transition ${
+                onClick={() => handleCardClick(item)}
+                className={`p-3 rounded-lg border transition cursor-pointer hover:shadow-md ${
                   item.status === "PERBAIKAN" 
                     ? item.prioritas?.includes("P1")
                       ? "bg-red-100 border-red-500 text-red-900 animate-pulse"
-                      : "bg-amber-50 border-amber-300 text-amber-900"
-                    : "bg-slate-50 border-slate-200 hover:border-emerald-300"
+                      : "bg-amber-50 border-amber-300 text-amber-900 hover:border-amber-400"
+                    : "bg-slate-50 border-slate-200 hover:border-emerald-400 hover:bg-emerald-50/30"
                 }`}
               >
                 <div className="flex justify-between items-start">
@@ -600,10 +652,7 @@ export default function DashboardPage() {
                     {item.status}
                   </span>
                 </div>
-                {item.badge && (
-                  <p className="text-[10px] font-bold text-red-600 mt-2">{item.badge}</p>
-                )}
-                <p className={`text-[10px] mt-1 ${item.status === "PERBAIKAN" ? "text-slate-700 font-medium" : "text-slate-400"}`}>
+                <p className={`text-[10px] mt-2 ${item.status === "PERBAIKAN" ? "text-amber-800 font-semibold" : "text-slate-400"}`}>
                   {item.sub}
                 </p>
               </div>
@@ -613,112 +662,99 @@ export default function DashboardPage() {
 
         {/* Bottom Section: Chart & Table */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          
           {/* Grafik Laporan Kendala */}
-                {/* Grafik Laporan Kendala (Opsi 2: Grafik Diperbesar + Ringkasan Kategori Scrollable) */}
-                <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
-                  <div>
-                    <div className="flex justify-between items-center mb-1">
-                      <h3 className="font-bold text-sm text-slate-800">Grafik Laporan Kendala</h3>
-                      <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded text-slate-500 font-medium">
-                        Sumbu X: Unit / Y: Jumlah
-                      </span>
-                    </div>
-                    <p className="text-xs text-slate-400 mb-3">Distribusi frekuensi laporan per unit RTG terkini</p>
+          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <h3 className="font-bold text-sm text-slate-800">Grafik Laporan Kendala</h3>
+                <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded text-slate-500 font-medium">
+                  Sumbu X: Unit / Y: Jumlah
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 mb-3">Distribusi frekuensi laporan per unit RTG terkini</p>
 
-                    {/* AREA GRAFIK TINGGI & TINGKAT LEGA (h-56) */}
-                    <div className="relative pl-7 pr-2 pt-3 pb-10 h-56 border-b border-l border-slate-300">
-                      {/* Sumbu Y Angka Laporan */}
-                      <div className="absolute left-0 top-0 bottom-10 flex flex-col justify-between text-[10px] font-semibold text-slate-400 pr-1 text-right w-6">
-                        <span>{maxVal}</span>
-                        <span>{Math.round(maxVal / 2)}</span>
-                        <span>0</span>
-                      </div>
-
-                      {/* Garis Bantu Horizontal */}
-                      <div className="absolute left-6 right-0 top-3 border-b border-dashed border-slate-200"></div>
-                      <div className="absolute left-6 right-0 top-1/2 border-b border-dashed border-slate-200"></div>
-
-                      {/* Batang Grafik & Nomor RTG */}
-                      <div className="flex items-end justify-between gap-2 h-full w-full relative z-10 overflow-x-auto pb-8">
-                        {chartData.length === 0 ? (
-                          <div className="w-full text-center text-xs text-slate-400 my-auto">
-                            Belum ada laporan kendala
-                          </div>
-                        ) : (
-                          chartData.map((bar, idx) => {
-                            const barHeightPercent = Math.max(15, Math.round((bar.value / maxVal) * 100));
-
-                            return (
-                              <div key={idx} className="flex-1 flex flex-col items-center h-full justify-end min-w-36px relative">
-                                {/* Nilai Jumlah */}
-                                <span className="text-[10px] text-slate-700 font-bold mb-1">{bar.value}</span>
-                                
-                                {/* Visual Batang Grafik */}
-                                <div
-                                  style={{ height: `${barHeightPercent}%` }}
-                                  className="w-full max-w-22px bg-[#0e5c75] rounded-t-sm hover:bg-emerald-500 transition-all duration-300 shadow-sm"
-                                ></div>
-
-                                {/* Nomor RTG di Bawah Batang */}
-                                <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 flex flex-col items-center w-full">
-                                  <span className="text-[9px] font-bold text-slate-700 whitespace-nowrap">
-                                    {bar.label.includes("RTG") ? bar.label : `RTG ${bar.label}`}
-                                  </span>
-                                </div>
-                              </div>
-                            );
-                          })
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="text-center text-[10px] font-bold text-slate-400 mt-3 mb-3">
-                      Unit RTG Crane (Sumbu X)
-                    </div>
-
-                    {/* WIDGET RINGKASAN KATEGORI DENGAN SCROLL VERTIKAL (max-h-36) */}
-                    <div className="space-y-2 pt-2 border-t border-slate-100">
-                      <div className="flex justify-between items-center">
-                        <h4 className="text-xs font-bold text-slate-700">Ringkasan Kategori Kendala</h4>
-                        <span className="text-[10px] text-slate-400 italic">Scroll untuk detail</span>
-                      </div>
-
-                      {/* Area Scroll Internal Kategori */}
-                      <div className="max-h-36 overflow-y-auto pr-1 space-y-1.5 text-xs">
-                        {[
-                          "Sistem Hidrolik",
-                          "Spreader & Twistlock",
-                          "Hoist & Motor",
-                          "Sistem Elektrikal / Genset",
-                          "Gantry & Ban"
-                        ].map((kategoriName) => {
-                          const totalKasus = reports.filter(r => r.kategori === kategoriName).length;
-                          return (
-                            <div 
-                              key={kategoriName} 
-                              className="flex justify-between items-center px-3 py-2 bg-slate-50 rounded-lg border border-slate-100 hover:bg-slate-100 transition"
-                            >
-                              <span className="text-slate-600 font-medium text-[11px]">{kategoriName}</span>
-                              <span className={`font-bold px-2 py-0.5 rounded text-[10px] ${
-                                totalKasus > 0 ? "bg-teal-100 text-[#0e5c75]" : "bg-slate-200 text-slate-500"
-                              }`}>
-                                {totalKasus} Kasus
-                              </span>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-between items-center text-[11px] text-slate-500 pt-3 border-t border-slate-100 mt-3">
-                    <span>Total: {reports.length} Laporan</span>
-                    <span className="font-semibold text-slate-700">Terselesaikan: 0%</span>
-                  </div>
+              <div className="relative pl-7 pr-2 pt-3 pb-10 h-56 border-b border-l border-slate-300">
+                <div className="absolute left-0 top-0 bottom-10 flex flex-col justify-between text-[10px] font-semibold text-slate-400 pr-1 text-right w-6">
+                  <span>{maxVal}</span>
+                  <span>{Math.round(maxVal / 2)}</span>
+                  <span>0</span>
                 </div>
 
-          {/* Laporan Kendala Terbaru (TEMUAN KENDALA ALAT DIGABUNG + SCROLL VERTIKAL) */}
+                <div className="absolute left-6 right-0 top-3 border-b border-dashed border-slate-200"></div>
+                <div className="absolute left-6 right-0 top-1/2 border-b border-dashed border-slate-200"></div>
+
+                <div className="flex items-end justify-between gap-2 h-full w-full relative z-10 overflow-x-auto pb-8">
+                  {chartData.length === 0 ? (
+                    <div className="w-full text-center text-xs text-slate-400 my-auto">
+                      Belum ada laporan kendala
+                    </div>
+                  ) : (
+                    chartData.map((bar, idx) => {
+                      const barHeightPercent = Math.max(15, Math.round((bar.value / maxVal) * 100));
+
+                      return (
+                        <div key={idx} className="flex-1 flex flex-col items-center h-full justify-end min-w-36px relative">
+                          <span className="text-[10px] text-slate-700 font-bold mb-1">{bar.value}</span>
+                          <div
+                            style={{ height: `${barHeightPercent}%` }}
+                            className="w-full max-w-22px bg-[#0e5c75] rounded-t-sm hover:bg-emerald-500 transition-all duration-300 shadow-sm"
+                          ></div>
+                          <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 flex flex-col items-center w-full">
+                            <span className="text-[9px] font-bold text-slate-700 whitespace-nowrap">
+                              {bar.label.includes("RTG") ? bar.label : `RTG ${bar.label}`}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+
+              <div className="text-center text-[10px] font-bold text-slate-400 mt-3 mb-3">
+                Unit RTG Crane (Sumbu X)
+              </div>
+
+              <div className="space-y-2 pt-2 border-t border-slate-100">
+                <div className="flex justify-between items-center">
+                  <h4 className="text-xs font-bold text-slate-700">Ringkasan Kategori Kendala</h4>
+                  <span className="text-[10px] text-slate-400 italic">Scroll untuk detail</span>
+                </div>
+
+                <div className="max-h-36 overflow-y-auto pr-1 space-y-1.5 text-xs">
+                  {[
+                    "Sistem Hidrolik",
+                    "Spreader & Twistlock",
+                    "Hoist & Motor",
+                    "Sistem Elektrikal / Genset",
+                    "Gantry & Ban"
+                  ].map((kategoriName) => {
+                    const totalKasus = reports.filter(r => r.kategori === kategoriName).length;
+                    return (
+                      <div 
+                        key={kategoriName} 
+                        className="flex justify-between items-center px-3 py-2 bg-slate-50 rounded-lg border border-slate-100 hover:bg-slate-100 transition"
+                      >
+                        <span className="text-slate-600 font-medium text-[11px]">{kategoriName}</span>
+                        <span className={`font-bold px-2 py-0.5 rounded text-[10px] ${
+                          totalKasus > 0 ? "bg-teal-100 text-[#0e5c75]" : "bg-slate-200 text-slate-500"
+                        }`}>
+                          {totalKasus} Kasus
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-between items-center text-[11px] text-slate-500 pt-3 border-t border-slate-100 mt-3">
+              <span>Total: {reports.length} Laporan</span>
+              <span className="font-semibold text-slate-700">Terselesaikan: 0%</span>
+            </div>
+          </div>
+
+          {/* Laporan Kendala Terbaru */}
           <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
             <div>
               <div className="flex justify-between items-center mb-3">
@@ -760,7 +796,7 @@ export default function DashboardPage() {
                 ))}
               </div>
 
-              {/* TABEL SCROLL VERTIKAL INTERNAL DENGAN KOLOM TEMUAN DIGABUNG */}
+              {/* TABEL LAPORAN */}
               <div className="overflow-x-auto max-h-380px overflow-y-auto border border-slate-100 rounded-lg">
                 <table className="w-full text-left text-xs relative">
                   <thead className="sticky top-0 bg-slate-100 text-slate-600 font-bold z-10 shadow-sm">
@@ -834,7 +870,135 @@ export default function DashboardPage() {
         </div>
       </main>
 
-      {/* Modal Detail Tiket & Aksi Penanganan Status (ST) */}
+      {/* POP-UP MODAL 1: KLIK CARD RTG (READY / KENDALA PERBAIKAN) */}
+      {showRtgModal && selectedRtgCard && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            
+            {/* Header Modal */}
+            <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+              <div className="flex items-center space-x-2">
+                <span className="font-extrabold text-lg text-slate-900">{selectedRtgCard.id}</span>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                  selectedRtgCard.status === "PERBAIKAN"
+                    ? "bg-amber-100 text-amber-800 border border-amber-300"
+                    : "bg-emerald-100 text-emerald-700 border border-emerald-300"
+                }`}>
+                  {selectedRtgCard.status === "PERBAIKAN" ? "PERLU PERBAIKAN" : "READY / NORMAL"}
+                </span>
+              </div>
+              <button
+                onClick={() => setShowRtgModal(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Konten Modal Berdasarkan Status Unit */}
+            {selectedRtgCard.status === "PERBAIKAN" ? (
+              /* MODAL KUNING / PERBAIKAN: Menampilkan Detail Temuan Kendala */
+              <div className="space-y-3 text-xs">
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start space-x-2.5 text-amber-900">
+                  <AlertOctagon size={20} className="text-amber-600 shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="font-bold text-xs">Unit Membutuhkan Tindakan Perbaikan</h4>
+                    <p className="text-[11px] text-amber-700 mt-0.5 leading-relaxed">
+                      Laporan kerusakan aktif terdeteksi untuk unit {selectedRtgCard.id}. Sistem menyarankan penanganan oleh tim teknisi.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                  <div>
+                    <p className="text-slate-400">Lokasi Yard:</p>
+                    <p className="font-bold text-slate-700 flex items-center space-x-1 mt-0.5">
+                      <MapPin size={12} className="text-slate-400" />
+                      <span>{selectedRtgCard.reportDetails?.lokasi || selectedRtgCard.block || "Blok Area"}</span>
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400">Tingkat Prioritas:</p>
+                    <span className="font-extrabold text-amber-700 bg-amber-100 px-2 py-0.5 rounded text-[10px] inline-block mt-0.5">
+                      {selectedRtgCard.prioritas || "MEDIUM P3"}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-slate-400">Kategori Kendala:</p>
+                    <p className="font-bold text-slate-700 mt-0.5">{selectedRtgCard.reportDetails?.kategori || "Kendala Umum"}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400">Waktu Masuk:</p>
+                    <p className="font-bold text-slate-700 mt-0.5">
+                      {selectedRtgCard.reportDetails ? `${selectedRtgCard.reportDetails.jam}` : "Terbaru"}
+                    </p>
+                  </div>
+                </div>
+
+                <div>
+                  <p className="font-bold text-slate-700 mb-1 flex items-center space-x-1">
+                    <Wrench size={13} className="text-slate-500" />
+                    <span>Rincian Temuan Kendala Alat:</span>
+                  </p>
+                  <p className="p-3 bg-red-50 text-red-700 border border-red-100 rounded-xl leading-relaxed text-xs">
+                    {selectedRtgCard.reportDetails
+                      ? (selectedRtgCard.reportDetails.praOperasi !== "-" ? selectedRtgCard.reportDetails.praOperasi : selectedRtgCard.reportDetails.pascaOperasi)
+                      : "Terdeteksi anomali kondisi alat, menunggu detail verifikasi MCC."}
+                  </p>
+                </div>
+
+                {selectedRtgCard.reportDetails?.pelapor && (
+                  <div className="text-[11px] text-slate-500 flex justify-between items-center pt-1 px-1">
+                    <span>Pelapor: <strong className="text-slate-700">{selectedRtgCard.reportDetails.pelapor}</strong></span>
+                    <span>Status Tiket: <strong className="text-amber-700">{selectedRtgCard.reportDetails.status}</strong></span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* MODAL HIJAU / READY: Konfirmasi Unit Siap Operasi */
+              <div className="space-y-4 text-xs text-center py-2">
+                <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-2xl mx-auto flex items-center justify-center border border-emerald-200">
+                  <ShieldCheck size={28} className="text-emerald-600" />
+                </div>
+
+                <div>
+                  <h4 className="font-bold text-sm text-slate-800">Unit RTG Siap Operasi (Ready)</h4>
+                  <p className="text-slate-500 text-xs mt-1 leading-relaxed">
+                    Unit <strong className="text-slate-800">{selectedRtgCard.id}</strong> beroperasi secara normal tanpa adanya laporan kerusakan aktif di Container Yard.
+                  </p>
+                </div>
+
+                <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 text-left text-xs space-y-1.5">
+                  <div className="flex justify-between text-slate-600">
+                    <span>Lokasi Yard:</span>
+                    <span className="font-bold text-slate-800">{selectedRtgCard.block || "BLOK Standard"}</span>
+                  </div>
+                  <div className="flex justify-between text-slate-600">
+                    <span>Kondisi Mesin & Ban:</span>
+                    <span className="text-emerald-600 font-bold">100% Optimal</span>
+                  </div>
+                  <div className="flex justify-between text-slate-600">
+                    <span>Status TOS Terminal:</span>
+                    <span className="text-emerald-600 font-bold">Terhubung</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Footer Modal */}
+            <div className="pt-3 border-t border-slate-100 flex justify-end space-x-2">
+              <button
+                onClick={() => setShowRtgModal(false)}
+                className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-semibold hover:bg-slate-200 cursor-pointer transition"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL DETAIL TIKET TABEL (ST) */}
       {showDetailModal && selectedReport && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
@@ -897,7 +1061,7 @@ export default function DashboardPage() {
 
       {/* Footer */}
       <footer className="max-w-7xl mx-auto px-6 mt-6 flex justify-between items-center text-[11px] text-slate-400">
-        <p>© 2024 Pelabuhan Petikemas - Sistem Operasional Rubber-Tired Gantry (RTG)</p>
+        <p>© 2026 Terminal Petikemas Surabaya - Sistem Operasional Rubber-Tired Gantry (RTG)</p>
         <div className="flex items-center space-x-3">
           <span className="flex items-center space-x-1">
             <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
