@@ -11,7 +11,8 @@ import {
   CheckCircle2, 
   AlertOctagon, 
   FileText, 
-  Plus, 
+  Plus,
+  Clock, 
   Search, 
   ChevronRight,
   Download,
@@ -74,7 +75,7 @@ export default function DashboardPage() {
   const [selectedRtgCard, setSelectedRtgCard] = useState<RTGCardItem | null>(null);
   const [showRtgModal, setShowRtgModal] = useState(false);
 
-  // Supabase client
+  // database client
   const supabase = createClient();
   const [role, setRole] = useState<string | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
@@ -186,7 +187,7 @@ export default function DashboardPage() {
     };
   }, [supabase]);
 
-  // State untuk Modal Detail Tiket Tabel (ST)
+  // State untuk Modal Detail Tiket Tabel
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
 

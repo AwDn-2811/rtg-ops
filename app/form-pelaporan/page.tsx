@@ -285,7 +285,7 @@ export default function FormPelaporanPage() {
           console.error("Gagal update status RTG:", updateRtgStatusError.message);
         }
 
-        // 6. Simpan juga ke localStorage sebagai fallback / sync data sementara frontend
+        // Simpan juga ke localStorage sebagai fallback / sync data sementara frontend
         const mediaBase64Promises = selectedFiles.map((file) => {
           return new Promise<{ type: string; url: string; name: string }>((resolve) => {
             const isVideo = file.type.startsWith("video/");
