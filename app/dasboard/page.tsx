@@ -20,7 +20,8 @@ import {
   X,
   Wrench,
   MapPin,
-  ShieldCheck
+  ShieldCheck,
+  Menu
 } from "lucide-react";
 
 interface Report {
@@ -46,9 +47,8 @@ interface RTGStatus {
   last_updated: string;
 }
 
-// Interface untuk data card yang diklik
 interface RTGCardItem {
-  id: string; // unit_code, misal "RTG 50"
+  id: string;
   status: "NORMAL" | "PERBAIKAN";
   prioritas?: string;
   sub: string;
@@ -66,15 +66,18 @@ export default function DashboardPage() {
   const [showNotif, setShowNotif] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
 
-  // State untuk RTG Status dari Supabase
+  // State Hamburger Menu Mobile
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // State RTG Status Supabase
   const [rtgStatuses, setRtgStatuses] = useState<RTGStatus[]>([]);
   const [rtgLoading, setRtgLoading] = useState(true);
 
-  // State untuk Modal Klik Card RTG
+  // State Modal Card RTG
   const [selectedRtgCard, setSelectedRtgCard] = useState<RTGCardItem | null>(null);
   const [showRtgModal, setShowRtgModal] = useState(false);
 
-  // database client
+  // Supabase Client & Role Check
   const supabase = createClient();
   const [role, setRole] = useState<string | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
@@ -138,7 +141,7 @@ export default function DashboardPage() {
     };
   }, [router, supabase]);
 
-  // Ambil data RTG Status dari Supabase + Realtime Subscription
+  // Realtime Supabase
   useEffect(() => {
     let isMounted = true;
 
@@ -164,7 +167,6 @@ export default function DashboardPage() {
 
     fetchRTGStatuses();
 
-    // Setup Realtime Sync jika ada update status di tabel rtg_statuses
     const channel = supabase
       .channel("rtg_statuses_dashboard")
       .on(
@@ -186,18 +188,22 @@ export default function DashboardPage() {
     };
   }, [supabase]);
 
-  // State untuk Modal Detail Tiket Tabel
+  // Modal Detail Tiket Tabel
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
 
   useEffect(() => {
     const saved = localStorage.getItem("rtg_reports");
     if (saved) {
-      setReports(JSON.parse(saved));
+      try {
+        setReports(JSON.parse(saved));
+      } catch (e) {
+        console.error("Error read localstorage:", e);
+      }
     }
   }, []);
 
-  // Filter gabungan berdasarkan input pencarian & tombol kategori
+  // Filter Laporan
   const filteredReports = reports.filter((r) => {
     const matchesSearch =
       r.rtg.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -211,8 +217,7 @@ export default function DashboardPage() {
     return matchesSearch && matchesKategori;
   });
 
-  // Pemetaan rtgUnits gabungan Supabase & Laporan aktif
-  // REVISI: Status PERBAIKAN hanya diset jika terdapat laporan aktif di state `reports`
+  // Pemetaan Card RTG Units
   const rtgUnits = rtgStatuses.map((item) => {
     const activeReport = reports.find(
       (r) => r.rtg.toUpperCase() === item.unit_code.toUpperCase()
@@ -234,14 +239,12 @@ export default function DashboardPage() {
   // REVISI: Perhitungan total perbaikan & normal dihitung berdasarkan dynamic rtgUnits
   const totalPerbaikan = rtgUnits.filter((item) => item.status === "PERBAIKAN").length;
   const totalNormal = rtgUnits.filter((item) => item.status === "NORMAL").length;
-
-  // Handler saat Card RTG Diklik
   const handleCardClick = (unit: RTGCardItem) => {
     setSelectedRtgCard(unit);
     setShowRtgModal(true);
   };
 
-  // Hitung jumlah laporan per unit untuk grafik
+  // Chart Data Calculation
   const rtgCounts: Record<string, number> = {};
   reports.forEach((r) => {
     rtgCounts[r.rtg] = (rtgCounts[r.rtg] || 0) + 1;
@@ -372,10 +375,19 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-800 font-sans text-sm pb-10">
-      {/* Header / Navbar */}
-      <header className="bg-[#0b3c3c] text-white px-8 py-4 flex items-center justify-between shadow-md relative z-50">
-        <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center">
+      {/* Header / Navbar Responsif */}
+      <header className="bg-[#0b3c3c] text-white px-4 sm:px-8 py-3.5 sm:py-4 flex items-center justify-between shadow-md relative z-50">
+        <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
+          {/* Tombol Hamburger khusus HP */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="p-1.5 text-slate-200 hover:text-white lg:hidden rounded-lg hover:bg-[#134e4e] transition cursor-pointer"
+            aria-label="Toggle Navigation Menu"
+          >
+            {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
+
+          <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center">
             <img
               src="/images/logopelindo.png"
               alt="Logo Pelindo"
@@ -385,17 +397,19 @@ export default function DashboardPage() {
             />
           </div>
           <div>
-            <h1 className="font-bold text-lg leading-none tracking-tight">PELAPORAN RTG</h1>
-            <p className="text-[11px] text-emerald-200 mt-0.5">OPERASIONAL LAPANGAN TERMINAL PETIKEMAS SURABAYA</p>
+            <h1 className="font-bold text-sm sm:text-lg leading-none tracking-tight">PELAPORAN RTG</h1>
+            <p className="text-[9px] sm:text-[11px] text-emerald-200 mt-0.5 hidden sm:block">
+              OPERASIONAL LAPANGAN TERMINAL PETIKEMAS SURABAYA
+            </p>
           </div>
         </div>
 
-        {/* Navigasi Header */}
-        <nav className="flex items-center space-x-2 bg-[#082e2e] p-1.5 rounded-full text-xs shadow-inner">
+        {/* Navigasi Desktop */}
+        <nav className="hidden lg:flex items-center space-x-1 sm:space-x-2 bg-[#082e2e] p-1 sm:p-1.5 rounded-full text-[11px] sm:text-xs shadow-inner">
           {(role === "admin" || role === "operator") && (
             <Link
               href="/form-pelaporan"
-              className={`px-5 py-2 rounded-full transition font-semibold ${
+              className={`px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-full transition font-semibold whitespace-nowrap ${
                 pathname === "/form-pelaporan"
                   ? "bg-white text-[#0b3c3c] shadow"
                   : "text-slate-300 hover:text-white"
@@ -408,7 +422,7 @@ export default function DashboardPage() {
           {(role === "admin" || role === "mcc") && (
             <Link
               href="/verifikasi-mcc"
-              className={`px-5 py-2 rounded-full transition font-semibold ${
+              className={`px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-full transition font-semibold whitespace-nowrap ${
                 pathname === "/verifikasi-mcc"
                   ? "bg-white text-[#0b3c3c] shadow"
                   : "text-slate-300 hover:text-white"
@@ -420,7 +434,7 @@ export default function DashboardPage() {
 
           <Link
             href="/dasboard"
-            className={`px-5 py-2 rounded-full transition font-semibold ${
+            className={`px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-full transition font-semibold whitespace-nowrap ${
               pathname === "/dasboard"
                 ? "bg-white text-[#0b3c3c] shadow"
                 : "text-slate-300 hover:text-white"
@@ -432,7 +446,7 @@ export default function DashboardPage() {
           {(role === "admin" || role === "teknisi") && (
             <Link
               href="/penanganan-teknis"
-              className={`px-5 py-2 rounded-full transition font-semibold ${
+              className={`px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-full transition font-semibold whitespace-nowrap ${
                 pathname === "/penanganan-teknis"
                   ? "bg-white text-[#0b3c3c] shadow"
                   : "text-slate-300 hover:text-white"
@@ -443,23 +457,25 @@ export default function DashboardPage() {
           )}
         </nav>
 
-        <div className="flex items-center space-x-4">
+        {/* Action Right: Notif & Profile */}
+        <div className="flex items-center space-x-2 sm:space-x-4 shrink-0">
           <div className="relative">
             <button
               onClick={() => {
                 setShowNotif(!showNotif);
                 setShowProfile(false);
+                setMobileMenuOpen(false);
               }}
-              className="p-2.5 text-slate-200 hover:text-white rounded-full hover:bg-[#134e4e] transition relative"
+              className="p-2 sm:p-2.5 text-slate-200 hover:text-white rounded-full hover:bg-[#134e4e] transition relative"
             >
-              <Bell size={20} />
+              <Bell size={18} />
               {reports.length > 0 && (
                 <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse"></span>
               )}
             </button>
 
             {showNotif && (
-              <div className="absolute right-0 mt-3 w-80 bg-white text-slate-800 rounded-xl shadow-xl border border-slate-200 overflow-hidden z-50">
+              <div className="absolute right-0 mt-3 w-72 sm:w-80 bg-white text-slate-800 rounded-xl shadow-xl border border-slate-200 overflow-hidden z-50">
                 <div className="p-3 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
                   <span className="font-bold text-xs text-slate-700">Notifikasi Kendala</span>
                   <span className="text-[10px] bg-red-100 text-red-600 font-semibold px-2 py-0.5 rounded-full">
@@ -492,13 +508,14 @@ export default function DashboardPage() {
               onClick={() => {
                 setShowProfile(!showProfile);
                 setShowNotif(false);
+                setMobileMenuOpen(false);
               }}
-              className="flex items-center space-x-3 bg-[#134e4e] hover:bg-[#185d5d] px-4 py-2 rounded-full text-xs transition border border-emerald-700/50 cursor-pointer"
+              className="flex items-center space-x-2 sm:space-x-3 bg-[#134e4e] hover:bg-[#185d5d] px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs transition border border-emerald-700/50 cursor-pointer"
             >
               <div className="p-1 bg-emerald-500 rounded-full text-white">
-                <User size={15} />
+                <User size={14} />
               </div>
-              <div className="text-left leading-tight">
+              <div className="text-left leading-tight hidden sm:block">
                 <p className="font-semibold text-white text-xs">Supervisi Lapangan</p>
                 <p className="text-[10px] text-emerald-200">Shift A - Pier 2</p>
               </div>
@@ -544,41 +561,101 @@ export default function DashboardPage() {
         </div>
       </header>
 
+      {/* DROPDOWN HAMBURGER MENU (KHUSUS MOBILE) */}
+      {mobileMenuOpen && (
+        <div className="lg:hidden bg-[#082e2e] text-white px-4 py-3 border-b border-emerald-800/40 space-y-2 shadow-lg animate-in slide-in-from-top duration-200">
+          {(role === "admin" || role === "operator") && (
+            <Link
+              href="/form-pelaporan"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
+                pathname === "/form-pelaporan"
+                  ? "bg-white text-[#0b3c3c]"
+                  : "text-slate-200 hover:bg-[#104848]"
+              }`}
+            >
+              Form Pelaporan
+            </Link>
+          )}
+
+          {(role === "admin" || role === "mcc") && (
+            <Link
+              href="/verifikasi-mcc"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
+                pathname === "/verifikasi-mcc"
+                  ? "bg-white text-[#0b3c3c]"
+                  : "text-slate-200 hover:bg-[#104848]"
+              }`}
+            >
+              Approval MCC
+            </Link>
+          )}
+
+          <Link
+            href="/dasboard"
+            onClick={() => setMobileMenuOpen(false)}
+            className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
+              pathname === "/dasboard"
+                ? "bg-white text-[#0b3c3c]"
+                : "text-slate-200 hover:bg-[#104848]"
+            }`}
+          >
+            Dashboard Monitoring
+          </Link>
+
+          {(role === "admin" || role === "teknisi") && (
+            <Link
+              href="/penanganan-teknis"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
+                pathname === "/penanganan-teknis"
+                  ? "bg-white text-[#0b3c3c]"
+                  : "text-slate-200 hover:bg-[#104848]"
+              }`}
+            >
+              Penanganan Teknisi
+            </Link>
+          )}
+        </div>
+      )}
+
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 mt-6 space-y-6">
-        <div className="bg-[#0f4c5c] text-white p-6 rounded-xl relative overflow-hidden shadow-sm">
-          <div className="inline-flex items-center space-x-2 bg-[#175d70] px-3 py-1 rounded-full text-xs text-emerald-300 mb-3">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 mt-4 sm:mt-6 space-y-4 sm:space-y-6">
+        {/* Banner Utama */}
+        <div className="bg-[#0f4c5c] text-white p-5 sm:p-6 rounded-xl relative overflow-hidden shadow-sm">
+          <div className="inline-flex items-center space-x-2 bg-[#175d70] px-3 py-1 rounded-full text-[11px] sm:text-xs text-emerald-300 mb-3">
             <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
             <span>LIVE MONITORING RTG • DERMAGA PETIKEMAS</span>
           </div>
-          <div className="flex justify-between items-end">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
             <div>
-              <h2 className="text-2xl font-bold mb-1">Pelaporan Kendala Operasional</h2>
-              <p className="text-slate-300 text-xs">
+              <h2 className="text-xl sm:text-2xl font-bold mb-1">Pelaporan Kendala Operasional</h2>
+              <p className="text-slate-300 text-xs leading-relaxed max-w-2xl">
                 Pemantauan status kondisi, kesiapan alat Rubber-Tired Gantry (RTG), dan tindak lanjut laporan kendala terminal secara real-time.
               </p>
             </div>
-            <div className="flex space-x-2">
+            <div className="flex space-x-2 w-full sm:w-auto">
               <button
                 onClick={exportToExcel}
-                className="bg-emerald-700 hover:bg-emerald-800 text-white px-3 py-2 rounded-lg font-medium text-xs flex items-center space-x-1.5 transition shadow cursor-pointer"
+                className="flex-1 sm:flex-initial bg-emerald-700 hover:bg-emerald-800 text-white px-3 py-2 rounded-lg font-medium text-xs flex items-center justify-center space-x-1.5 transition shadow cursor-pointer"
               >
-                <Download size={16} />
+                <Download size={15} />
                 <span>Rekap Excel</span>
               </button>
               <button 
                 onClick={() => router.push("/form-pelaporan")}
-                className="bg-[#0e5c75] hover:bg-[#0b485c] border border-emerald-400 text-white px-4 py-2 rounded-lg font-medium text-xs flex items-center space-x-1.5 transition shadow cursor-pointer"
+                className="flex-1 sm:flex-initial bg-[#0e5c75] hover:bg-[#0b485c] border border-emerald-400 text-white px-3.5 py-2 rounded-lg font-medium text-xs flex items-center justify-center space-x-1.5 transition shadow cursor-pointer whitespace-nowrap"
               >
-                <Plus size={16} />
-                <span>Buat Laporan Kendala</span>
+                <Plus size={15} />
+                <span>Buat Laporan</span>
               </button>
             </div>
           </div>
         </div>
 
-        {/* Top Summary Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Top Summary Cards Responsif */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
           <div className="bg-white p-4 rounded-xl border border-slate-200 flex justify-between items-start shadow-sm">
             <div>
               <p className="text-xs text-slate-500 font-medium">RTG Beroperasi Normal</p>
@@ -595,13 +672,13 @@ export default function DashboardPage() {
               <p className="text-xs text-slate-500 font-medium">RTG Perlu Perbaikan</p>
               <h3 className="text-2xl font-bold mt-1 text-red-600">{totalPerbaikan} <span className="text-xs font-normal text-slate-500">unit</span></h3>
               <p className="text-[11px] text-slate-500 mt-2 font-medium">
-                {totalPerbaikan > 0 ? `• ${totalPerbaikan} unit terdeteksi butuh pemeliharaan` : "• Seluruh unit siap operasi"}
+                {totalPerbaikan > 0 ? `• ${totalPerbaikan} unit butuh pemeliharaan` : "• Seluruh unit siap operasi"}
               </p>
             </div>
             <div className="p-2 bg-red-50 text-red-500 rounded-lg"><AlertOctagon size={20} /></div>
           </div>
 
-          <div className="bg-white p-4 rounded-xl border border-slate-200 flex justify-between items-start shadow-sm">
+          <div className="bg-white p-4 rounded-xl border border-slate-200 sm:col-span-2 md:col-span-1 flex justify-between items-start shadow-sm">
             <div>
               <p className="text-xs text-slate-500 font-medium">Laporan Hari Ini</p>
               <h3 className="text-2xl font-bold mt-1 text-slate-800">{reports.length} <span className="text-xs font-normal text-slate-500">laporan masuk</span></h3>
@@ -612,33 +689,33 @@ export default function DashboardPage() {
         </div>
 
         {/* Status Unit RTG Grid */}
-        <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-          <div className="flex justify-between items-center mb-4">
+        <div className="bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-sm">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
             <div>
-              <h3 className="font-bold text-base text-slate-800">Status Unit RTG (Layout Area)</h3>
-              <p className="text-xs text-slate-400">Pemetaan sebaran unit di blok Container Yard (Klik unit untuk lihat detail)</p>
+              <h3 className="font-bold text-sm sm:text-base text-slate-800">Status Unit RTG (Layout Area)</h3>
+              <p className="text-[11px] sm:text-xs text-slate-400">Pemetaan sebaran unit di Container Yard (Klik unit untuk detail)</p>
             </div>
-            <div className="flex items-center space-x-4 text-xs font-medium">
+            <div className="flex items-center space-x-3 text-xs font-medium self-end sm:self-auto">
               <span className="flex items-center space-x-1.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                <span className="text-slate-600">Normal/Ready</span> 
-                <span className="text-slate-400">{totalNormal} Unit</span>
+                <span className="text-slate-600">Ready</span> 
+                <span className="text-slate-400">({totalNormal})</span>
               </span>
               <span className="flex items-center space-x-1.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-yellow-500"></span>
-                <span className="text-slate-600">Perlu Perbaikan</span> 
-                <span className="text-slate-400">{totalPerbaikan} Unit</span>
+                <span className="text-slate-600">Perbaikan</span> 
+                <span className="text-slate-400">({totalPerbaikan})</span>
               </span>
             </div>
           </div>
 
-          {/* GRID CARD RTG DENGAN HANDLER KLIK */}
-          <div className="grid grid-cols-7 gap-3">
+          {/* GRID RESPONSIVE */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2.5 sm:gap-3">
             {rtgUnits.map((item) => (
               <div 
                 key={item.id} 
                 onClick={() => handleCardClick(item)}
-                className={`p-3 rounded-lg border transition cursor-pointer hover:shadow-md ${
+                className={`p-2.5 sm:p-3 rounded-lg border transition cursor-pointer hover:shadow-md ${
                   item.status === "PERBAIKAN" 
                     ? item.prioritas?.includes("P1")
                       ? "bg-red-100 border-red-500 text-red-900 animate-pulse"
@@ -647,8 +724,8 @@ export default function DashboardPage() {
                 }`}
               >
                 <div className="flex justify-between items-start">
-                  <span className="font-bold text-sm text-slate-800">{item.id}</span>
-                  <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                  <span className="font-bold text-xs sm:text-sm text-slate-800">{item.id}</span>
+                  <span className={`text-[8px] sm:text-[9px] font-bold px-1.5 py-0.5 rounded ${
                     item.status === "PERBAIKAN" 
                       ? item.prioritas?.includes("P1") ? "bg-red-600 text-white" : "bg-amber-200 text-amber-800"
                       : "bg-emerald-100 text-emerald-700"
@@ -656,7 +733,7 @@ export default function DashboardPage() {
                     {item.status}
                   </span>
                 </div>
-                <p className={`text-[10px] mt-2 ${item.status === "PERBAIKAN" ? "text-amber-800 font-semibold" : "text-slate-400"}`}>
+                <p className={`text-[9px] sm:text-[10px] mt-1.5 truncate ${item.status === "PERBAIKAN" ? "text-amber-800 font-semibold" : "text-slate-400"}`}>
                   {item.sub}
                 </p>
               </div>
@@ -665,19 +742,19 @@ export default function DashboardPage() {
         </div>
 
         {/* Bottom Section: Chart & Table */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
           {/* Grafik Laporan Kendala */}
-          <div className="bg-white p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
             <div>
               <div className="flex justify-between items-center mb-1">
                 <h3 className="font-bold text-sm text-slate-800">Grafik Laporan Kendala</h3>
-                <span className="text-[10px] bg-slate-100 px-2 py-0.5 rounded text-slate-500 font-medium">
+                <span className="text-[9px] bg-slate-100 px-2 py-0.5 rounded text-slate-500 font-medium">
                   Sumbu X: Unit / Y: Jumlah
                 </span>
               </div>
               <p className="text-xs text-slate-400 mb-3">Distribusi frekuensi laporan per unit RTG terkini</p>
 
-              <div className="relative pl-7 pr-2 pt-3 pb-10 h-56 border-b border-l border-slate-300">
+              <div className="relative pl-7 pr-2 pt-3 pb-10 h-52 sm:h-56 border-b border-l border-slate-300">
                 <div className="absolute left-0 top-0 bottom-10 flex flex-col justify-between text-[10px] font-semibold text-slate-400 pr-1 text-right w-6">
                   <span>{maxVal}</span>
                   <span>{Math.round(maxVal / 2)}</span>
@@ -697,11 +774,11 @@ export default function DashboardPage() {
                       const barHeightPercent = Math.max(15, Math.round((bar.value / maxVal) * 100));
 
                       return (
-                        <div key={idx} className="flex-1 flex flex-col items-center h-full justify-end min-w-36px relative">
+                        <div key={idx} className="flex-1 flex flex-col items-center h-full justify-end min-w-[36px] relative">
                           <span className="text-[10px] text-slate-700 font-bold mb-1">{bar.value}</span>
                           <div
                             style={{ height: `${barHeightPercent}%` }}
-                            className="w-full max-w-22px bg-[#0e5c75] rounded-t-sm hover:bg-emerald-500 transition-all duration-300 shadow-sm"
+                            className="w-full max-w-[22px] bg-[#0e5c75] rounded-t-sm hover:bg-emerald-500 transition-all duration-300 shadow-sm"
                           ></div>
                           <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 flex flex-col items-center w-full">
                             <span className="text-[9px] font-bold text-slate-700 whitespace-nowrap">
@@ -722,7 +799,7 @@ export default function DashboardPage() {
               <div className="space-y-2 pt-2 border-t border-slate-100">
                 <div className="flex justify-between items-center">
                   <h4 className="text-xs font-bold text-slate-700">Ringkasan Kategori Kendala</h4>
-                  <span className="text-[10px] text-slate-400 italic">Scroll untuk detail</span>
+                  <span className="text-[10px] text-slate-400 italic">Scroll detail</span>
                 </div>
 
                 <div className="max-h-36 overflow-y-auto pr-1 space-y-1.5 text-xs">
@@ -759,19 +836,19 @@ export default function DashboardPage() {
           </div>
 
           {/* Laporan Kendala Terbaru */}
-          <div className="lg:col-span-2 bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+          <div className="lg:col-span-2 bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
             <div>
-              <div className="flex justify-between items-center mb-3">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
                 <h3 className="font-bold text-sm text-slate-800">Laporan Kendala Terbaru</h3>
-                <div className="flex space-x-2">
-                  <div className="relative">
-                    <Search className="absolute left-2.5 top-1.5 text-slate-400" size={14} />
+                <div className="flex space-x-2 w-full sm:w-auto justify-between sm:justify-end">
+                  <div className="relative flex-1 sm:flex-initial">
+                    <Search className="absolute left-2.5 top-2 text-slate-400" size={14} />
                     <input 
                       type="text" 
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
-                      placeholder="Cari tiket RTG / Pelapor..." 
-                      className="pl-8 pr-3 py-1 bg-slate-50 border border-slate-200 rounded-md text-xs focus:outline-none" 
+                      placeholder="Cari tiket RTG..." 
+                      className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-md text-xs focus:outline-none" 
                     />
                   </div>
                   {reports.length > 0 && (
@@ -782,14 +859,14 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* Filter Tombol Kategori */}
-              <div className="flex items-center space-x-1.5 mb-3 overflow-x-auto pb-1">
-                <span className="text-[11px] font-bold text-slate-400 mr-1">Filter:</span>
+              {/* Filter Tombol Kategori Horizontal Scroll */}
+              <div className="flex items-center space-x-1.5 mb-3 overflow-x-auto pb-1.5 max-w-full">
+                <span className="text-[11px] font-bold text-slate-400 mr-1 shrink-0">Filter:</span>
                 {["SEMUA", "Sistem Hidrolik", "Spreader & Twistlock", "Hoist & Motor", "Sistem Elektrikal / Genset", "Gantry & Ban"].map((kat) => (
                   <button
                     key={kat}
                     onClick={() => setSelectedKategoriFilter(kat)}
-                    className={`px-2.5 py-1 rounded-full text-[10px] font-semibold transition whitespace-nowrap cursor-pointer ${
+                    className={`px-2.5 py-1 rounded-full text-[10px] font-semibold transition whitespace-nowrap cursor-pointer shrink-0 ${
                       selectedKategoriFilter === kat
                         ? "bg-[#0b3c3c] text-white"
                         : "bg-slate-100 text-slate-600 hover:bg-slate-200"
@@ -801,8 +878,8 @@ export default function DashboardPage() {
               </div>
 
               {/* TABEL LAPORAN */}
-              <div className="overflow-x-auto max-h-380px overflow-y-auto border border-slate-100 rounded-lg">
-                <table className="w-full text-left text-xs relative">
+              <div className="overflow-x-auto max-h-[380px] overflow-y-auto border border-slate-100 rounded-lg">
+                <table className="w-full text-left text-xs relative min-w-[500px] sm:min-w-full">
                   <thead className="sticky top-0 bg-slate-100 text-slate-600 font-bold z-10 shadow-sm">
                     <tr>
                       <th className="py-2.5 px-3">TANGGAL</th>
@@ -830,7 +907,7 @@ export default function DashboardPage() {
                             {item.rtg}<br />
                             <span className="font-normal text-[10px] text-slate-400">{item.lokasi}</span>
                           </td>
-                          <td className="py-3 px-3">
+                          <td className="py-3 px-3 whitespace-nowrap">
                             <span className={`text-[9px] font-extrabold px-2 py-0.5 rounded-full ${
                               item.prioritas?.includes("P1") 
                                 ? "bg-red-600 text-white animate-pulse" 
@@ -868,18 +945,16 @@ export default function DashboardPage() {
 
             <div className="flex justify-between items-center text-[11px] text-slate-400 pt-3 border-t border-slate-100 mt-3">
               <span>Menampilkan {filteredReports.length} tiket aktif terkini</span>
-              <span>Scroll tabel ke bawah untuk memuat data lainnya</span>
+              <span className="hidden sm:inline">Scroll tabel ke bawah untuk memuat data lainnya</span>
             </div>
           </div>
         </div>
       </main>
 
-      {/* POP-UP MODAL 1: KLIK CARD RTG (READY / KENDALA PERBAIKAN) */}
+      {/* POP-UP MODAL 1: KLIK CARD RTG */}
       {showRtgModal && selectedRtgCard && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
-            
-            {/* Header Modal */}
+          <div className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
               <div className="flex items-center space-x-2">
                 <span className="font-extrabold text-lg text-slate-900">{selectedRtgCard.id}</span>
@@ -899,9 +974,7 @@ export default function DashboardPage() {
               </button>
             </div>
 
-            {/* Konten Modal Berdasarkan Status Unit */}
             {selectedRtgCard.status === "PERBAIKAN" ? (
-              /* MODAL KUNING / PERBAIKAN: Menampilkan Detail Temuan Kendala */
               <div className="space-y-3 text-xs">
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start space-x-2.5 text-amber-900">
                   <AlertOctagon size={20} className="text-amber-600 shrink-0 mt-0.5" />
@@ -959,7 +1032,6 @@ export default function DashboardPage() {
                 )}
               </div>
             ) : (
-              /* MODAL HIJAU / READY: Konfirmasi Unit Siap Operasi */
               <div className="space-y-4 text-xs text-center py-2">
                 <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-2xl mx-auto flex items-center justify-center border border-emerald-200">
                   <ShieldCheck size={28} className="text-emerald-600" />
@@ -989,7 +1061,6 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {/* Footer Modal */}
             <div className="pt-3 border-t border-slate-100 flex justify-end space-x-2">
               <button
                 onClick={() => setShowRtgModal(false)}
@@ -1005,7 +1076,7 @@ export default function DashboardPage() {
       {/* MODAL DETAIL TIKET TABEL (ST) */}
       {showDetailModal && selectedReport && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-5 sm:p-6 shadow-2xl space-y-4">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
               <div>
                 <span className="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded">
@@ -1064,7 +1135,7 @@ export default function DashboardPage() {
       )}
 
       {/* Footer */}
-      <footer className="max-w-7xl mx-auto px-6 mt-6 flex justify-between items-center text-[11px] text-slate-400">
+      <footer className="max-w-7xl mx-auto px-4 sm:px-6 mt-6 flex flex-col sm:flex-row justify-between items-center text-[11px] text-slate-400 gap-2 text-center sm:text-left">
         <p>© 2026 Terminal Petikemas Surabaya - Sistem Operasional Rubber-Tired Gantry (RTG)</p>
         <div className="flex items-center space-x-3">
           <span className="flex items-center space-x-1">

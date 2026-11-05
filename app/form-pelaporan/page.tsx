@@ -23,6 +23,7 @@ import {
   CheckCircle2,
   ArrowRight,
   Radio,
+  Menu,
 } from "lucide-react";
 
 export default function FormPelaporanPage() {
@@ -30,71 +31,68 @@ export default function FormPelaporanPage() {
   const pathname = usePathname();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // State Hamburger Menu Mobile
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   // Supabase Client
   const supabase = createClient();
   const [role, setRole] = useState<string | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
 
   useEffect(() => {
-  let isMounted = true;
+    let isMounted = true;
 
-  async function checkAccess() {
-    try {
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser();
+    async function checkAccess() {
+      try {
+        const {
+          data: { user },
+          error: authError,
+        } = await supabase.auth.getUser();
 
-      if (authError || !user) {
-        router.replace("/");
-        return;
-      }
+        if (authError || !user) {
+          router.replace("/");
+          return;
+        }
 
-      const { data: profile, error: profileError } =
-        await supabase
+        const { data: profile, error: profileError } = await supabase
           .from("profiles")
           .select("role, is_active")
           .eq("id", user.id)
           .single();
 
-      if (
-        profileError ||
-        !profile ||
-        !profile.is_active
-      ) {
-        await supabase.auth.signOut();
+        if (profileError || !profile || !profile.is_active) {
+          await supabase.auth.signOut();
+          router.replace("/");
+          return;
+        }
+
+        // Halaman Form Pelaporan hanya untuk admin dan operator
+        const allowedRoles = ["admin", "operator"];
+
+        if (!allowedRoles.includes(profile.role)) {
+          router.replace("/dasboard");
+          return;
+        }
+
+        if (isMounted) {
+          setRole(profile.role);
+        }
+      } catch (error) {
+        console.error("Gagal memeriksa akses:", error);
         router.replace("/");
-        return;
-      }
-
-      // Halaman Form Pelaporan hanya untuk admin dan operator
-      const allowedRoles = ["admin", "operator"];
-
-      if (!allowedRoles.includes(profile.role)) {
-        router.replace("/dasboard");
-        return;
-      }
-
-      if (isMounted) {
-        setRole(profile.role);
-      }
-    } catch (error) {
-      console.error("Gagal memeriksa akses:", error);
-
-      router.replace("/");
-    } finally {
-      if (isMounted) {
-        setProfileLoading(false);
+      } finally {
+        if (isMounted) {
+          setProfileLoading(false);
+        }
       }
     }
-  }
 
-  checkAccess();
+    checkAccess();
 
-  return () => {
-    isMounted = false;
-  };
-}, [router, supabase]);
+    return () => {
+      isMounted = false;
+    };
+  }, [router, supabase]);
 
   // Tanggal Realtime / Read-Only
   const [tanggal, setTanggal] = useState("");
@@ -109,7 +107,7 @@ export default function FormPelaporanPage() {
   const [deskripsiKendala, setDeskripsiKendala] = useState("");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [filePreviews, setFilePreviews] = useState<{ name: string; type: string; url: string }[]>([]);
-  
+
   const [showNotif, setShowNotif] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [reportsCount, setReportsCount] = useState(0);
@@ -124,9 +122,13 @@ export default function FormPelaporanPage() {
   useEffect(() => {
     const saved = localStorage.getItem("rtg_reports");
     if (saved) {
-      const parsed = JSON.parse(saved);
-      setReportsCount(parsed.length);
-      setRecentReports(parsed.slice(0, 4));
+      try {
+        const parsed = JSON.parse(saved);
+        setReportsCount(parsed.length);
+        setRecentReports(parsed.slice(0, 4));
+      } catch (e) {
+        console.error("Gagal membaca local storage", e);
+      }
     }
   }, []);
 
@@ -193,7 +195,6 @@ export default function FormPelaporanPage() {
     setFilePreviews(previews);
   };
 
- // HANDLER SUBMIT DENGAN INTEGRASI SUPABASE DATABASE & ANIMASI CRANE JALAN 5 DETIK
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nomorRtg || !deskripsiKendala) {
@@ -206,7 +207,7 @@ export default function FormPelaporanPage() {
     setProgressPercent(0);
 
     const startTime = Date.now();
-    const totalDuration = 5000; // 5 Detik animasi
+    const totalDuration = 5000;
     const progressInterval = setInterval(() => {
       const elapsed = Date.now() - startTime;
       const pct = Math.min(Math.round((elapsed / totalDuration) * 100), 100);
@@ -300,7 +301,7 @@ export default function FormPelaporanPage() {
               findings: deskripsiKendala,
               verification_status: "PENDING",
               priority: 3, // Diisi tipe number 3 (bukan string "3" jika tipe kolom int4)
-              evidence_url: uploadedUrls, // <--- SUDAH TERISI ARRAY URL PUBLIC (misal: ["https://..."])
+              evidence_url: uploadedUrls, // <--- SUDAH TERISI ARRAY URL PUBLIC
             },
           ]);
 
@@ -330,7 +331,7 @@ export default function FormPelaporanPage() {
 
         // 6. Simpan ke localStorage (Untuk cadangan / sync temporary frontend)
         const mediaBase64Promises = selectedFiles.map((file) => {
-          return new Promise<{ type: string; url: string; name: string }>(
+          return new Promise<{ type: string; url: string; name: string }> (
             (resolve) => {
               const isVideo = file.type.startsWith("video/");
               if (file.size > 1.5 * 1024 * 1024) {
@@ -424,21 +425,28 @@ export default function FormPelaporanPage() {
   if (profileLoading || !role) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-100">
-        <p className="text-sm text-slate-500">
-          Memeriksa hak akses...
-        </p>
+        <p className="text-sm text-slate-500">Memeriksa hak akses...</p>
       </div>
     );
   }
-  
+
   return (
     <div className="min-h-screen bg-slate-100 text-slate-800 font-sans text-sm pb-10">
       {/* Header / Navbar */}
-      <header className="bg-[#0b3c3c] text-white px-8 py-4 flex items-center justify-between shadow-md relative z-50">
-        <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center">
+      <header className="bg-[#0b3c3c] text-white px-4 sm:px-8 py-4 flex items-center justify-between shadow-md relative z-50">
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          {/* Tombol Hamburger khusus HP */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="p-1.5 text-slate-200 hover:text-white lg:hidden rounded-lg hover:bg-[#134e4e] transition cursor-pointer"
+            aria-label="Toggle Navigation Menu"
+          >
+            {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
+
+          <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center shrink-0">
             <img
-              src="\images\logopelindo.png"
+              src="/images/logopelindo.png"
               alt="Logo Pelindo"
               width={48}
               height={48}
@@ -446,18 +454,19 @@ export default function FormPelaporanPage() {
             />
           </div>
           <div>
-            <h1 className="font-bold text-lg leading-none tracking-tight">PELAPORAN RTG</h1>
-            <p className="text-[11px] text-emerald-200 mt-0.5">OPERASIONAL LAPANGAN TERMINAL PETIKEMAS SURABAYA</p>
+            <h1 className="font-bold text-sm sm:text-lg leading-none tracking-tight">PELAPORAN RTG</h1>
+            <p className="text-[9px] sm:text-[11px] text-emerald-200 mt-0.5 hidden sm:block">
+              OPERASIONAL LAPANGAN TERMINAL PETIKEMAS SURABAYA
+            </p>
           </div>
         </div>
 
-        {/* Navigasi Header */}
-        <nav className="flex items-center space-x-2 bg-[#082e2e] p-1.5 rounded-full text-xs shadow-inner">
-
+        {/* Navigasi Desktop */}
+        <nav className="hidden lg:flex items-center space-x-1.5 bg-[#082e2e] p-1.5 rounded-full text-xs shadow-inner">
           {(role === "admin" || role === "operator") && (
             <Link
               href="/form-pelaporan"
-              className={`px-5 py-2 rounded-full transition font-semibold ${
+              className={`px-3.5 sm:px-5 py-2 rounded-full transition font-semibold ${
                 pathname === "/form-pelaporan"
                   ? "bg-white text-[#0b3c3c] shadow"
                   : "text-slate-300 hover:text-white"
@@ -467,11 +476,10 @@ export default function FormPelaporanPage() {
             </Link>
           )}
 
-          {/* Approval MCC: Admin dan MCC */}
           {(role === "admin" || role === "mcc") && (
             <Link
               href="/verifikasi-mcc"
-              className={`px-5 py-2 rounded-full transition font-semibold ${
+              className={`px-3.5 sm:px-5 py-2 rounded-full transition font-semibold ${
                 pathname === "/verifikasi-mcc"
                   ? "bg-white text-[#0b3c3c] shadow"
                   : "text-slate-300 hover:text-white"
@@ -481,10 +489,9 @@ export default function FormPelaporanPage() {
             </Link>
           )}
 
-          {/* Dashboard: Semua Role */}
           <Link
             href="/dasboard"
-            className={`px-5 py-2 rounded-full transition font-semibold ${
+            className={`px-3.5 sm:px-5 py-2 rounded-full transition font-semibold ${
               pathname === "/dasboard"
                 ? "bg-white text-[#0b3c3c] shadow"
                 : "text-slate-300 hover:text-white"
@@ -493,11 +500,10 @@ export default function FormPelaporanPage() {
             Dashboard Monitoring
           </Link>
 
-          {/* Penanganan Teknisi: Admin dan Teknisi */}
           {(role === "admin" || role === "teknisi") && (
             <Link
               href="/penanganan-teknis"
-              className={`px-5 py-2 rounded-full transition font-semibold ${
+              className={`px-3.5 sm:px-5 py-2 rounded-full transition font-semibold ${
                 pathname === "/penanganan-teknis"
                   ? "bg-white text-[#0b3c3c] shadow"
                   : "text-slate-300 hover:text-white"
@@ -508,23 +514,25 @@ export default function FormPelaporanPage() {
           )}
         </nav>
 
-        <div className="flex items-center space-x-4">
+        {/* Notifikasi & Profile Pop-up */}
+        <div className="flex items-center space-x-2 sm:space-x-4 shrink-0">
           <div className="relative">
             <button
               onClick={() => {
                 setShowNotif(!showNotif);
                 setShowProfile(false);
+                setMobileMenuOpen(false);
               }}
               className="p-2.5 text-slate-200 hover:text-white rounded-full hover:bg-[#134e4e] transition relative"
             >
-              <Bell size={20} />
+              <Bell size={18} />
               {reportsCount > 0 && (
                 <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse"></span>
               )}
             </button>
 
             {showNotif && (
-              <div className="absolute right-0 mt-3 w-80 bg-white text-slate-800 rounded-xl shadow-xl border border-slate-200 overflow-hidden z-50">
+              <div className="absolute right-0 mt-3 w-72 sm:w-80 bg-white text-slate-800 rounded-xl shadow-xl border border-slate-200 overflow-hidden z-50">
                 <div className="p-3 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
                   <span className="font-bold text-xs text-slate-700">Notifikasi Kendala</span>
                   <span className="text-[10px] bg-red-100 text-red-600 font-semibold px-2 py-0.5 rounded-full">
@@ -555,13 +563,14 @@ export default function FormPelaporanPage() {
               onClick={() => {
                 setShowProfile(!showProfile);
                 setShowNotif(false);
+                setMobileMenuOpen(false);
               }}
-              className="flex items-center space-x-3 bg-[#134e4e] hover:bg-[#185d5d] px-4 py-2 rounded-full text-xs transition border border-emerald-700/50 cursor-pointer"
+              className="flex items-center space-x-2 sm:space-x-3 bg-[#134e4e] hover:bg-[#185d5d] px-3 sm:px-4 py-2 rounded-full text-xs transition border border-emerald-700/50 cursor-pointer"
             >
               <div className="p-1 bg-emerald-500 rounded-full text-white">
                 <User size={15} />
               </div>
-              <div className="text-left leading-tight">
+              <div className="text-left leading-tight hidden sm:block">
                 <p className="font-semibold text-white text-xs">Supervisi Lapangan</p>
                 <p className="text-[10px] text-emerald-200">Shift A - Pier 2</p>
               </div>
@@ -607,20 +616,79 @@ export default function FormPelaporanPage() {
         </div>
       </header>
 
+      {/* DROPDOWN HAMBURGER MENU (KHUSUS MOBILE) */}
+      {mobileMenuOpen && (
+        <div className="lg:hidden bg-[#082e2e] text-white px-4 py-3 border-b border-emerald-800/40 space-y-2 shadow-lg animate-in slide-in-from-top duration-200">
+          {(role === "admin" || role === "operator") && (
+            <Link
+              href="/form-pelaporan"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
+                pathname === "/form-pelaporan"
+                  ? "bg-white text-[#0b3c3c]"
+                  : "text-slate-200 hover:bg-[#104848]"
+              }`}
+            >
+              Form Pelaporan
+            </Link>
+          )}
+
+          {(role === "admin" || role === "mcc") && (
+            <Link
+              href="/verifikasi-mcc"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
+                pathname === "/verifikasi-mcc"
+                  ? "bg-white text-[#0b3c3c]"
+                  : "text-slate-200 hover:bg-[#104848]"
+              }`}
+            >
+              Approval MCC
+            </Link>
+          )}
+
+          <Link
+            href="/dasboard"
+            onClick={() => setMobileMenuOpen(false)}
+            className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
+              pathname === "/dasboard"
+                ? "bg-white text-[#0b3c3c]"
+                : "text-slate-200 hover:bg-[#104848]"
+            }`}
+          >
+            Dashboard Monitoring
+          </Link>
+
+          {(role === "admin" || role === "teknisi") && (
+            <Link
+              href="/penanganan-teknis"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
+                pathname === "/penanganan-teknis"
+                  ? "bg-white text-[#0b3c3c]"
+                  : "text-slate-200 hover:bg-[#104848]"
+              }`}
+            >
+              Penanganan Teknisi
+            </Link>
+          )}
+        </div>
+      )}
+
       {/* Main Form */}
       <main className="max-w-5xl mx-auto mt-6 px-4">
-        <div className="bg-white rounded-2xl p-8 border border-slate-200 shadow-sm space-y-6">
-          <div className="flex justify-between items-start border-b border-slate-100 pb-5">
+        <div className="bg-white rounded-2xl p-4 sm:p-8 border border-slate-200 shadow-sm space-y-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-slate-100 pb-5 gap-3">
             <div className="flex items-center space-x-3">
               <div className="p-3 bg-blue-50 text-blue-600 rounded-xl">
                 <FilePlus size={24} />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-slate-800">Form Pelaporan Kondisi Alat RTG</h2>
+                <h2 className="text-base sm:text-lg font-bold text-slate-800">Form Pelaporan Kondisi Alat RTG</h2>
                 <p className="text-xs text-slate-400">Isi formulir berikut untuk melaporkan kendala ke Verifikasi MCC.</p>
               </div>
             </div>
-            <div className="flex items-center space-x-1.5 bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full text-xs font-medium">
+            <div className="flex items-center space-x-1.5 bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full text-xs font-medium self-start sm:self-auto">
               <ShieldCheck size={16} className="text-emerald-600" />
               <span>TRANSMISI AMAN TOS V2.4</span>
             </div>
@@ -786,7 +854,7 @@ export default function FormPelaporanPage() {
 
                         <div className="absolute top-2 left-2 bg-slate-900/80 text-white text-[9px] px-2 py-0.5 rounded-md font-semibold backdrop-blur-sm flex items-center space-x-1">
                           {item.type === "video" ? <Film size={10} /> : <Camera size={10} />}
-                          <span className="truncate max-w-100px">{item.name}</span>
+                          <span className="truncate max-w-[100px]">{item.name}</span>
                         </div>
 
                         <button
@@ -832,18 +900,15 @@ export default function FormPelaporanPage() {
         </div>
       </main>
 
-      {/* POP-UP MODAL SEAMLESS: DESAIN RINGKAS MODERN TANPA BORDER BERTUMPUK */}
+      {/* POP-UP MODAL SEAMLESS */}
       {(isSubmitting || isSuccess) && (
-        <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-md z-100 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-md z-[100] flex items-center justify-center p-4">
           <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full text-center shadow-2xl relative overflow-hidden space-y-5 text-white">
-            
-            {/* Header Line Akses Pelabuhan */}
-            <div className="absolute top-0 left-0 right-0 h-1.5 bg-linear-to-r from-emerald-500 via-teal-500 to-emerald-400"></div>
+            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-400"></div>
 
-            {/* STATUS LOADING (CRANE BERJALAN HORIZONTAL SEAMLESS 10 DETIK) */}
+            {/* STATUS LOADING */}
             {isSubmitting && (
               <div className="space-y-5 pt-2">
-                {/* ID Unit RTG Badge Top */}
                 <div className="flex justify-between items-center text-xs px-1">
                   <span className="text-slate-400 font-semibold flex items-center space-x-1.5">
                     <Radio size={14} className="animate-pulse text-emerald-400" />
@@ -854,37 +919,24 @@ export default function FormPelaporanPage() {
                   </span>
                 </div>
 
-                {/* ARENA LINTASAN CRANE TANPA BORDER DALAM BERTUMPUK */}
                 <div className="relative w-full h-20 bg-slate-950/80 rounded-2xl p-2 overflow-hidden border border-slate-800 flex flex-col justify-end">
-                  
-                  {/* Crane Komponen Bergerak dari Kiri ke Kanan Berdasarkan Persentase */}
-                  <div 
+                  <div
                     className="absolute top-2 transition-all duration-300 ease-linear flex flex-col items-center"
-                    style={{ left: `calc(${progressPercent}% * 0.74)` }} 
+                    style={{ left: `calc(${progressPercent}% * 0.74)` }}
                   >
-                    {/* Rangka Atas Crane */}
                     <div className="w-16 h-2 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.5)]"></div>
-                    
-                    {/* Tali Sling / Hoist */}
                     <div className="w-0.5 bg-slate-300 h-4 my-0.5"></div>
-
-                    {/* Container Peti Kemas */}
                     <div className="w-10 h-5 bg-amber-500 rounded border border-amber-600 flex items-center justify-center text-[7px] font-black text-slate-950 shadow">
                       TPS
                     </div>
-
-                    {/* Roda Gantry Crane */}
                     <div className="w-16 flex justify-between mt-0.5">
                       <div className="w-2.5 h-2.5 bg-slate-800 rounded-full animate-spin border border-slate-500"></div>
                       <div className="w-2.5 h-2.5 bg-slate-800 rounded-full animate-spin border border-slate-500"></div>
                     </div>
                   </div>
-
-                  {/* Rel Lintasan Crane di Dasar */}
                   <div className="w-full h-1 bg-slate-800 rounded-full mb-1"></div>
                 </div>
 
-                {/* Progress Bar & Steps Dinamis */}
                 <div className="space-y-3">
                   <div className="flex justify-between items-center text-xs">
                     <span className="text-slate-400 text-[11px]">Progres Transmisi</span>
@@ -892,13 +944,12 @@ export default function FormPelaporanPage() {
                   </div>
 
                   <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                    <div 
-                      className="bg-emerald-500 h-full transition-all duration-300 ease-out rounded-full" 
+                    <div
+                      className="bg-emerald-500 h-full transition-all duration-300 ease-out rounded-full"
                       style={{ width: `${progressPercent}%` }}
                     ></div>
                   </div>
 
-                  {/* Ringkasan Step Ringkas */}
                   <div className="bg-slate-950/60 p-3 rounded-2xl border border-slate-800/80 text-left text-xs space-y-1.5">
                     <div className={`flex items-center space-x-2 transition ${currentStep >= 1 ? "text-emerald-400 font-bold" : "text-slate-500"}`}>
                       <span className={`w-2 h-2 rounded-full ${currentStep >= 1 ? "bg-emerald-400 animate-pulse" : "bg-slate-700"}`}></span>
@@ -931,7 +982,6 @@ export default function FormPelaporanPage() {
                   </p>
                 </div>
 
-                {/* Card Summary Ringkas */}
                 <div className="bg-slate-950/80 p-3.5 rounded-2xl border border-slate-800 text-left text-xs space-y-2">
                   <div className="flex justify-between items-center text-slate-400 pb-1.5 border-b border-slate-800">
                     <span>Nomor Unit RTG:</span>
@@ -964,8 +1014,8 @@ export default function FormPelaporanPage() {
       )}
 
       {/* Footer */}
-      <footer className="max-w-5xl mx-auto mt-6 flex justify-between items-center text-[11px] text-slate-400 px-4">
-        <p>© 2024 Pelabuhan Petikemas - Sistem Operasional Rubber-Tired Gantry (RTG)</p>
+      <footer className="max-w-5xl mx-auto mt-6 flex flex-col sm:flex-row justify-between items-center text-[11px] text-slate-400 px-4 gap-2 text-center sm:text-left">
+        <p>© 2026 Pelabuhan Petikemas - Sistem Operasional Rubber-Tired Gantry (RTG)</p>
         <div className="flex items-center space-x-3">
           <span className="flex items-center space-x-1">
             <span className="w-2 h-2 rounded-full bg-emerald-500"></span>

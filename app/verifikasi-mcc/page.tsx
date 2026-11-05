@@ -20,6 +20,7 @@ import {
   Check,
   Edit3,
   Film,
+  Menu,
 } from "lucide-react";
 
 interface MediaItem {
@@ -65,6 +66,10 @@ export default function ApprovalMCCPage() {
   const [selectedUrgensiFilter, setSelectedUrgensiFilter] = useState("SEMUA");
   const [selectedTimFilter, setSelectedTimFilter] = useState("SEMUA");
 
+  // State Hamburger Menu Mobile
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  // Supabase Client
   const supabase = createClient();
   const [role, setRole] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -508,31 +513,49 @@ export default function ApprovalMCCPage() {
   if (profileLoading || !role) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-100">
-        <p className="text-sm text-slate-500">Memeriksa hak akses...</p>
+        <p className="text-xs text-slate-500">Memeriksa hak akses...</p>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-800 font-sans text-xs pb-10">
-      {/* Header */}
-      <header className="bg-[#0b3c3c] text-white px-8 py-3.5 flex items-center justify-between shadow-md relative z-50">
-        <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center">
-            <img src="/images/logopelindo.png" alt="Logo Pelindo" width={48} height={48} className="object-contain" />
+      {/* Header / Navbar Responsif */}
+      <header className="bg-[#0b3c3c] text-white px-4 sm:px-8 py-3.5 flex items-center justify-between shadow-md relative z-50">
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          {/* Tombol Hamburger khusus Layar HP (lg:hidden) */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="p-1.5 text-slate-200 hover:text-white lg:hidden rounded-lg hover:bg-[#134e4e] transition cursor-pointer"
+            aria-label="Toggle Navigation Menu"
+          >
+            {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
+
+          <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center shrink-0">
+            <img
+              src="/images/logopelindo.png"
+              alt="Logo Pelindo"
+              width={48}
+              height={48}
+              className="object-contain"
+            />
           </div>
           <div>
-            <h1 className="font-bold text-base leading-none tracking-tight flex items-center space-x-2">
+            <h1 className="font-bold text-sm sm:text-base leading-none tracking-tight flex items-center space-x-1.5">
               <span>PELAPORAN RTG</span>
-              <span className="bg-emerald-500/30 text-emerald-200 text-[9px] font-medium px-2 py-0.5 rounded border border-emerald-400/30">
+              <span className="bg-emerald-500/30 text-emerald-200 text-[8px] sm:text-[9px] font-medium px-1.5 py-0.5 rounded border border-emerald-400/30">
                 TOS LIVE
               </span>
             </h1>
-            <p className="text-[10px] text-emerald-200 mt-0.5">OPERASIONAL LAPANGAN TERMINAL PETIKEMAS SURABAYA</p>
+            <p className="text-[9px] sm:text-[10px] text-emerald-200 mt-0.5 hidden sm:block">
+              OPERASIONAL LAPANGAN TERMINAL PETIKEMAS SURABAYA
+            </p>
           </div>
         </div>
 
-        <nav className="flex items-center space-x-2 bg-[#082e2e] p-1.5 rounded-full text-xs shadow-inner">
+        {/* Navigasi Desktop (Disembunyikan di HP, tampil di Desktop) */}
+        <nav className="hidden lg:flex items-center space-x-2 bg-[#082e2e] p-1.5 rounded-full text-xs shadow-inner">
           {(role === "admin" || role === "operator") && (
             <Link href="/form-pelaporan" className={`px-5 py-2 rounded-full transition font-semibold ${pathname === "/form-pelaporan" ? "bg-white text-[#0b3c3c] shadow" : "text-slate-300 hover:text-white"}`}>Form Pelaporan</Link>
           )}
@@ -545,14 +568,22 @@ export default function ApprovalMCCPage() {
           )}
         </nav>
 
-        <div className="flex items-center space-x-4">
+        {/* Notifikasi & Profile Pop-up */}
+        <div className="flex items-center space-x-2 sm:space-x-4 shrink-0">
           <div className="relative">
-            <button onClick={() => { setShowNotif(!showNotif); setShowProfile(false); }} className="p-2 text-slate-200 hover:text-white rounded-full hover:bg-[#134e4e] transition relative">
+            <button
+              onClick={() => {
+                setShowNotif(!showNotif);
+                setShowProfile(false);
+                setMobileMenuOpen(false);
+              }}
+              className="p-2 text-slate-200 hover:text-white rounded-full hover:bg-[#134e4e] transition relative cursor-pointer"
+            >
               <Bell size={18} />
               {reports.length > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>}
             </button>
             {showNotif && (
-              <div className="absolute right-0 mt-3 w-80 bg-white text-slate-800 rounded-xl shadow-xl border border-slate-200 overflow-hidden z-50">
+              <div className="absolute right-0 mt-3 w-72 sm:w-80 bg-white text-slate-800 rounded-xl shadow-xl border border-slate-200 overflow-hidden z-50">
                 <div className="p-3 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
                   <span className="font-bold text-xs text-slate-700">Notifikasi Kendala</span>
                   <span className="text-[10px] bg-red-100 text-red-600 font-semibold px-2 py-0.5 rounded-full">{reports.length} Baru</span>
@@ -577,11 +608,20 @@ export default function ApprovalMCCPage() {
           </div>
 
           <div className="relative">
-            <button onClick={() => { setShowProfile(!showProfile); setShowNotif(false); }} className="flex items-center space-x-2.5 bg-[#134e4e] hover:bg-[#185d5d] px-3.5 py-1.5 rounded-full text-xs transition border border-emerald-700/50 cursor-pointer">
-              <div className="p-1 bg-emerald-500 rounded-full text-white"><User size={14} /></div>
-              <div className="text-left leading-tight">
-                <p className="font-semibold text-white text-[11px]">Petugas MCC</p>
-                <p className="text-[9px] text-emerald-200">Control Center</p>
+            <button
+              onClick={() => {
+                setShowProfile(!showProfile);
+                setShowNotif(false);
+                setMobileMenuOpen(false);
+              }}
+              className="flex items-center space-x-2 sm:space-x-2.5 bg-[#134e4e] hover:bg-[#185d5d] px-2.5 sm:px-3.5 py-1.5 rounded-full text-xs transition border border-emerald-700/50 cursor-pointer"
+            >
+              <div className="p-1 bg-emerald-500 rounded-full text-white">
+                <User size={14} />
+              </div>
+              <div className="text-left leading-tight hidden sm:block">
+                <p className="font-semibold text-white text-[11px]">Supervisi Lapangan</p>
+                <p className="text-[9px] text-emerald-200">Shift A • Pier 2</p>
               </div>
             </button>
             {showProfile && (
@@ -593,8 +633,28 @@ export default function ApprovalMCCPage() {
                     <p className="text-[10px] text-slate-400">ID MCC: #MCC-8821</p>
                   </div>
                 </div>
-                <button onClick={() => router.push("/")} className="w-full mt-2 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-xs font-semibold flex items-center justify-center space-x-1.5 transition">
-                  <LogOut size={14} /><span>Logout Sesi</span>
+
+                <div className="space-y-1.5 text-xs">
+                  <div className="flex justify-between text-slate-600">
+                    <span>Shift Tugas:</span>
+                    <span className="font-semibold text-slate-800">Shift A (07:00 - 15:00)</span>
+                  </div>
+                  <div className="flex justify-between text-slate-600">
+                    <span>Area Pengawasan:</span>
+                    <span className="font-semibold text-slate-800">Pier 2 Dermaga</span>
+                  </div>
+                  <div className="flex justify-between text-slate-600">
+                    <span>Status TOS:</span>
+                    <span className="text-emerald-600 font-semibold">Terhubung</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => router.push("/")}
+                  className="w-full mt-2 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-xs font-semibold flex items-center justify-center space-x-1.5 transition cursor-pointer"
+                >
+                  <LogOut size={14} />
+                  <span>Ganti Shift / Logout</span>
                 </button>
               </div>
             )}
@@ -602,22 +662,96 @@ export default function ApprovalMCCPage() {
         </div>
       </header>
 
+      {/* DROPDOWN NAVIGASI HAMBURGER MENU (KHUSUS MOBILE) */}
+      {mobileMenuOpen && (
+        <div className="lg:hidden bg-[#082e2e] text-white px-4 py-3 border-b border-emerald-800/40 space-y-2 shadow-lg animate-in slide-in-from-top duration-200">
+          {(role === "admin" || role === "operator") && (
+            <Link
+              href="/form-pelaporan"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
+                pathname === "/form-pelaporan"
+                  ? "bg-white text-[#0b3c3c]"
+                  : "text-slate-200 hover:bg-[#104848]"
+              }`}
+            >
+              Form Pelaporan
+            </Link>
+          )}
+
+          {(role === "admin" || role === "mcc") && (
+            <Link
+              href="/verifikasi-mcc"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
+                pathname === "/verifikasi-mcc"
+                  ? "bg-white text-[#0b3c3c]"
+                  : "text-slate-200 hover:bg-[#104848]"
+              }`}
+            >
+              Approval MCC
+            </Link>
+          )}
+
+          <Link
+            href="/dasboard"
+            onClick={() => setMobileMenuOpen(false)}
+            className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
+              pathname === "/dasboard"
+                ? "bg-white text-[#0b3c3c]"
+                : "text-slate-200 hover:bg-[#104848]"
+            }`}
+          >
+            Dashboard Monitoring
+          </Link>
+
+          {(role === "admin" || role === "teknisi") && (
+            <Link
+              href="/penanganan-teknis"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
+                pathname === "/penanganan-teknis"
+                  ? "bg-white text-[#0b3c3c]"
+                  : "text-slate-200 hover:bg-[#104848]"
+              }`}
+            >
+              Penanganan Teknisi
+            </Link>
+          )}
+        </div>
+      )}
+
       {/* Main Container */}
-      <main className="max-w-7xl mx-auto px-6 mt-6 space-y-5">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 mt-4 sm:mt-6 space-y-4 sm:space-y-5">
+
+        {/* Title & Action Section */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div>
             <div className="flex items-center space-x-2">
-              <h2 className="text-xl font-bold text-slate-900 tracking-tight">Approval Laporan Kendala RTG oleh MCC</h2>
-              <span className="bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center space-x-1">
+              <h2 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
+                Approval Laporan Kendala RTG oleh MCC
+              </h2>
+              <span className="bg-emerald-100 text-emerald-800 text-[9px] sm:text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center space-x-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                 <span>LIVE TOS SYNC</span>
               </span>
             </div>
-            <p className="text-slate-500 text-xs mt-0.5">Daftar laporan kendala RTG yang menunggu verifikasi MCC.</p>
+            <p className="text-slate-500 text-xs mt-0.5 leading-relaxed">
+              Daftar laporan kendala RTG yang menunggu verifikasi MCC. Laporan yang disetujui akan
+              otomatis dibuatkan ticket untuk diteruskan ke teknisi.
+            </p>
           </div>
-          <button onClick={loadData} className="bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 px-3.5 py-2 rounded-lg text-xs font-medium flex items-center space-x-1.5 transition shadow-sm cursor-pointer">
-            <RefreshCw size={14} /><span>Refresh Data</span>
-          </button>
+
+          <div className="flex items-center space-x-2.5 self-start md:self-auto">
+            <button
+              onClick={loadData}
+              className="bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 px-3.5 py-2 rounded-lg text-xs font-medium flex items-center space-x-1.5 transition shadow-sm cursor-pointer"
+            >
+              <RefreshCw size={14} />
+              <span>Refresh Data</span>
+            </button>
+
+          </div>
         </div>
 
         {/* Cards Summary */}
@@ -629,6 +763,7 @@ export default function ApprovalMCCPage() {
             </div>
             <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl"><FileText size={20} /></div>
           </div>
+
           <div className="bg-white p-4 rounded-xl border border-slate-200 flex justify-between items-start shadow-sm border-l-4 border-l-red-500">
             <div>
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">LAPORAN PRIORITAS TINGGI</p>
@@ -636,6 +771,7 @@ export default function ApprovalMCCPage() {
             </div>
             <div className="p-2.5 bg-red-50 text-red-500 rounded-xl"><AlertOctagon size={20} /></div>
           </div>
+
           <div className="bg-white p-4 rounded-xl border border-slate-200 flex justify-between items-start shadow-sm">
             <div>
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">TIKET DIBUAT</p>
@@ -643,6 +779,7 @@ export default function ApprovalMCCPage() {
             </div>
             <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl"><Ticket size={20} /></div>
           </div>
+
           <div className="bg-white p-4 rounded-xl border border-slate-200 flex justify-between items-start shadow-sm">
             <div>
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">LAPORAN DIPROSES</p>
@@ -655,9 +792,11 @@ export default function ApprovalMCCPage() {
         {/* Filter Bar */}
         <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-3 justify-between items-center">
           <div className="relative flex-1 w-full">
+
             <Search className="absolute left-3 top-2.5 text-slate-400" size={15} />
             <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Cari laporan, nomor RTG, atau pelapor..." className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-emerald-500" />
           </div>
+
           <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
             <select value={selectedBlokFilter} onChange={(e) => setSelectedBlokFilter(e.target.value)} className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none cursor-pointer">
               <option value="SEMUA">Semua Blok (A, B, C, D, E)</option>
@@ -667,12 +806,14 @@ export default function ApprovalMCCPage() {
               <option value="D">Blok D</option>
               <option value="E">Blok E</option>
             </select>
+
             <select value={selectedUrgensiFilter} onChange={(e) => setSelectedUrgensiFilter(e.target.value)} className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none cursor-pointer">
               <option value="SEMUA">Tingkat Urgensi: Semua</option>
               <option value="P1">Priority 1 (P1)</option>
               <option value="P2">Priority 2 (P2)</option>
               <option value="P3">Priority 3 (P3)</option>
             </select>
+
             <select value={selectedTimFilter} onChange={(e) => setSelectedTimFilter(e.target.value)} className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none cursor-pointer">
               <option value="SEMUA">Semua Kategori Kendala</option>
               <option value="Hidrolik">Tim Hidrolik</option>
@@ -680,12 +821,14 @@ export default function ApprovalMCCPage() {
               <option value="Mekanikal">Tim Mekanikal</option>
               <option value="Elektrikal">Tim Elektrikal/Genset</option>
             </select>
+
             <button onClick={handleResetFilter} className="text-slate-500 hover:text-slate-800 text-xs font-semibold px-2 py-1 transition cursor-pointer">Reset</button>
           </div>
         </div>
 
         {/* Kanban Board */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+
           {/* Kolom 1 */}
           <div className="bg-slate-200/50 p-4 rounded-xl border border-slate-200 flex flex-col h-[450px] min-h-0">
             <div className="flex items-center justify-between mb-4">
@@ -695,9 +838,10 @@ export default function ApprovalMCCPage() {
                 <span className="bg-red-100 text-red-600 font-bold px-2 py-0.5 rounded-full text-[11px]">{tiketMenunggu.length}</span>
               </div>
             </div>
+
             <div className="space-y-3.5 flex-1 min-h-0 overflow-y-auto pr-2 flex flex-col">
               {tiketMenunggu.length === 0 ? (
-                <div className="bg-white/80 rounded-xl p-8 text-center text-xs text-slate-400 border border-dashed border-slate-300 my-auto flex flex-col items-center justify-center">
+                <div className="bg-white/80 rounded-xl p-6 sm:p-8 text-center text-xs text-slate-400 border border-dashed border-slate-300 my-auto flex flex-col items-center justify-center">
                   <FileText className="mb-2 text-slate-300" size={28} />
                   <span>Belum ada laporan yang menunggu verifikasi MCC.</span>
                 </div>
@@ -738,7 +882,7 @@ export default function ApprovalMCCPage() {
             </div>
             <div className="space-y-3.5 flex-1 min-h-0 overflow-y-auto pr-2 flex flex-col">
               {tiketDikerjakan.length === 0 ? (
-                <div className="bg-white/80 rounded-xl p-8 text-center text-xs text-slate-400 border border-dashed border-slate-300 my-auto flex flex-col items-center justify-center">
+                <div className="bg-white/80 rounded-xl p-6 sm:p-8 text-center text-xs text-slate-400 border border-dashed border-slate-300 my-auto flex flex-col items-center justify-center">
                   <span>Tidak ada unit sedang dikerjakan.</span>
                 </div>
               ) : (
@@ -784,9 +928,10 @@ export default function ApprovalMCCPage() {
                 <span className="bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full text-[11px]">{tiketSelesai.length}</span>
               </div>
             </div>
+
             <div className="space-y-3.5 flex-1 min-h-0 overflow-y-auto pr-2 flex flex-col">
               {tiketSelesai.length === 0 ? (
-                <div className="bg-white/80 rounded-xl p-8 text-center text-xs text-slate-400 border border-dashed border-slate-300 my-auto flex flex-col items-center justify-center">
+                <div className="bg-white/80 rounded-xl p-6 sm:p-8 text-center text-xs text-slate-400 border border-dashed border-slate-300 my-auto flex flex-col items-center justify-center">
                   <CheckCircle2 className="mb-2 text-slate-300" size={28} />
                   <span>Belum ada perbaikan selesai / laporan ditolak.</span>
                 </div>
@@ -819,7 +964,7 @@ export default function ApprovalMCCPage() {
       {/* MODAL APPROVAL DENGAN PREVIEW FOTO / VIDEO LAMPIRAN */}
       {showDetailModal && selectedReport && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-4 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
               <div>
                 <span className="text-[10px] font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded">
@@ -829,18 +974,20 @@ export default function ApprovalMCCPage() {
                   Detail Kendala Unit {selectedReport.rtg}
                 </h3>
               </div>
+
               <button onClick={() => setShowDetailModal(false)} className="p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer">
                 <X size={18} />
               </button>
             </div>
 
             <div className="space-y-3 text-xs">
-              <div className="grid grid-cols-2 gap-2 bg-slate-50 p-3 rounded-lg">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-slate-50 p-3 rounded-lg">
                 <div>
                   <p className="text-slate-400">Lokasi Yard:</p>
                   <p className="font-bold text-slate-700">{selectedReport.lokasi}</p>
                 </div>
                 <div>
+
                   <label htmlFor="mcc-priority" className="text-slate-400 block mb-1">Prioritas MCC:</label>
                   {selectedReport.status === "MENUNGGU VERIFIKASI MCC" ? (
                     <select id="mcc-priority" value={selectedPriority} onChange={(e) => setSelectedPriority(e.target.value)} className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs font-bold text-slate-700 focus:outline-none focus:border-emerald-500">
@@ -857,6 +1004,7 @@ export default function ApprovalMCCPage() {
                   )}
                 </div>
                 <div>
+
                   <label htmlFor="mcc-technician" className="text-slate-400 block mb-1">Teknisi Ditugaskan:</label>
                   {selectedReport.status === "MENUNGGU VERIFIKASI MCC" ? (
                     <select id="mcc-technician" value={selectedTeknisiId} onChange={(e) => setSelectedTeknisiId(e.target.value)} className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs font-bold text-slate-700 focus:outline-none focus:border-emerald-500">
@@ -892,6 +1040,7 @@ export default function ApprovalMCCPage() {
                       : "0 Berkas"}
                   </span>
                 </p>
+
 
                 {selectedReport.lampiranMedia && selectedReport.lampiranMedia.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">

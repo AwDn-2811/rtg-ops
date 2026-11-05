@@ -15,6 +15,7 @@ import {
   Users,
   Search,
   CheckCircle2,
+  Menu,
   X,
   Camera,
   Check,
@@ -52,6 +53,7 @@ interface Report {
   resolutionNotes?: string;
 }
 
+
 export default function PenangananTeknisPage() {
   const router = useRouter();
   const pathname = usePathname();
@@ -60,6 +62,9 @@ export default function PenangananTeknisPage() {
   const [selectedBlokFilter, setSelectedBlokFilter] = useState("SEMUA");
   const [selectedUrgensiFilter, setSelectedUrgensiFilter] = useState("SEMUA");
   const [selectedTimFilter, setSelectedTimFilter] = useState("SEMUA");
+
+  // State Hamburger Menu Mobile
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const supabase = createClient();
   const [role, setRole] = useState<string | null>(null);
@@ -468,59 +473,128 @@ export default function PenangananTeknisPage() {
   if (profileLoading || !role) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-100">
-        <p className="text-sm text-slate-500">Memeriksa hak akses...</p>
+        <p className="text-xs text-slate-500">Memeriksa hak akses...</p>
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-800 font-sans text-xs pb-10">
-      {/* Header */}
-      <header className="bg-[#0b3c3c] text-white px-8 py-3.5 flex items-center justify-between shadow-md relative z-50">
-        <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center">
-            <img src="/images/logopelindo.png" alt="Logo Pelindo" width={48} height={48} className="object-contain" />
+      {/* Header / Navbar Responsif */}
+      <header className="bg-[#0b3c3c] text-white px-4 sm:px-8 py-3.5 flex items-center justify-between shadow-md relative z-50">
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          {/* Tombol Hamburger khusus HP */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="p-1.5 text-slate-200 hover:text-white lg:hidden rounded-lg hover:bg-[#134e4e] transition cursor-pointer"
+            aria-label="Toggle Navigation Menu"
+          >
+            {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
+
+          <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center shrink-0">
+            <img
+              src="/images/logopelindo.png"
+              alt="Logo Pelindo"
+              width={48}
+              height={48}
+              className="object-contain"
+            />
           </div>
           <div>
-            <h1 className="font-bold text-base leading-none tracking-tight flex items-center space-x-2">
+            <h1 className="font-bold text-sm sm:text-base leading-none tracking-tight flex items-center space-x-1.5">
               <span>PELAPORAN RTG</span>
-              <span className="bg-emerald-500/30 text-emerald-200 text-[9px] font-medium px-2 py-0.5 rounded border border-emerald-400/30">
+              <span className="bg-emerald-500/30 text-emerald-200 text-[8px] sm:text-[9px] font-medium px-1.5 py-0.5 rounded border border-emerald-400/30">
                 TOS LIVE
               </span>
             </h1>
-            <p className="text-[10px] text-emerald-200 mt-0.5">OPERASIONAL LAPANGAN TERMINAL PETIKEMAS SURABAYA</p>
+            <p className="text-[9px] sm:text-[10px] text-emerald-200 mt-0.5 hidden sm:block">
+              OPERASIONAL LAPANGAN TERMINAL PETIKEMAS SURABAYA
+            </p>
           </div>
         </div>
 
-        <nav className="flex items-center space-x-2 bg-[#082e2e] p-1.5 rounded-full text-xs shadow-inner">
+        {/* Navigasi Desktop */}
+        <nav className="hidden lg:flex items-center space-x-2 bg-[#082e2e] p-1.5 rounded-full text-xs shadow-inner">
           {(role === "admin" || role === "operator") && (
-            <Link href="/form-pelaporan" className={`px-5 py-2 rounded-full transition font-semibold ${pathname === "/form-pelaporan" ? "bg-white text-[#0b3c3c] shadow" : "text-slate-300 hover:text-white"}`}>Form Pelaporan</Link>
+            <Link
+              href="/form-pelaporan"
+              className={`px-5 py-2 rounded-full transition font-semibold ${
+                pathname === "/form-pelaporan"
+                  ? "bg-white text-[#0b3c3c] shadow"
+                  : "text-slate-300 hover:text-white"
+              }`}
+            >
+              Form Pelaporan
+            </Link>
           )}
+
           {(role === "admin" || role === "mcc") && (
-            <Link href="/verifikasi-mcc" className={`px-5 py-2 rounded-full transition font-semibold ${pathname === "/verifikasi-mcc" ? "bg-white text-[#0b3c3c] shadow" : "text-slate-300 hover:text-white"}`}>Approval MCC</Link>
+            <Link
+              href="/verifikasi-mcc"
+              className={`px-5 py-2 rounded-full transition font-semibold ${
+                pathname === "/verifikasi-mcc"
+                  ? "bg-white text-[#0b3c3c] shadow"
+                  : "text-slate-300 hover:text-white"
+              }`}
+            >
+              Approval MCC
+            </Link>
           )}
-          <Link href="/dasboard" className={`px-5 py-2 rounded-full transition font-semibold ${pathname === "/dasboard" ? "bg-white text-[#0b3c3c] shadow" : "text-slate-300 hover:text-white"}`}>Dashboard Monitoring</Link>
+
+          <Link
+            href="/dasboard"
+            className={`px-5 py-2 rounded-full transition font-semibold ${
+              pathname === "/dasboard"
+                ? "bg-white text-[#0b3c3c] shadow"
+                : "text-slate-300 hover:text-white"
+            }`}
+          >
+            Dashboard Monitoring
+          </Link>
+
           {(role === "admin" || role === "teknisi") && (
-            <Link href="/penanganan-teknis" className={`px-5 py-2 rounded-full transition font-semibold ${pathname === "/penanganan-teknis" ? "bg-white text-[#0b3c3c] shadow" : "text-slate-300 hover:text-white"}`}>Penanganan Teknisi</Link>
+            <Link
+              href="/penanganan-teknis"
+              className={`px-5 py-2 rounded-full transition font-semibold ${
+                pathname === "/penanganan-teknis"
+                  ? "bg-white text-[#0b3c3c] shadow"
+                  : "text-slate-300 hover:text-white"
+              }`}
+            >
+              Penanganan Teknisi
+            </Link>
           )}
         </nav>
 
-        <div className="flex items-center space-x-4">
+        {/* Notifikasi & Profile Pop-up */}
+        <div className="flex items-center space-x-2 sm:space-x-4 shrink-0">
           <div className="relative">
-            <button onClick={() => { setShowNotif(!showNotif); setShowProfile(false); }} className="p-2 text-slate-200 hover:text-white rounded-full hover:bg-[#134e4e] transition relative">
+            <button
+              onClick={() => {
+                setShowNotif(!showNotif);
+                setShowProfile(false);
+                setMobileMenuOpen(false);
+              }}
+              className="p-2 text-slate-200 hover:text-white rounded-full hover:bg-[#134e4e] transition relative cursor-pointer"
+            >
               <Bell size={18} />
-              {reports.length > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>}
+              {reports.length > 0 && (
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
+              )}
             </button>
 
             {showNotif && (
-              <div className="absolute right-0 mt-3 w-80 bg-white text-slate-800 rounded-xl shadow-xl border border-slate-200 overflow-hidden z-50">
+              <div className="absolute right-0 mt-3 w-72 sm:w-80 bg-white text-slate-800 rounded-xl shadow-xl border border-slate-200 overflow-hidden z-50">
                 <div className="p-3 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
-                  <span className="font-bold text-xs text-slate-700">Notifikasi Work Order</span>
-                  <span className="text-[10px] bg-red-100 text-red-600 font-semibold px-2 py-0.5 rounded-full">{reports.length} Aktif</span>
+                  <span className="font-bold text-xs text-slate-700">Notifikasi Kendala</span>
+                  <span className="text-[10px] bg-red-100 text-red-600 font-semibold px-2 py-0.5 rounded-full">
+                    {reports.length} Baru
+                  </span>
                 </div>
                 <div className="max-h-64 overflow-y-auto divide-y divide-slate-100">
                   {reports.length === 0 ? (
-                    <div className="p-4 text-center text-xs text-slate-400">Tidak ada penanganan baru</div>
+                    <div className="p-4 text-center text-xs text-slate-400">Tidak ada notifikasi baru</div>
                   ) : (
                     reports.slice(0, 4).map((item, idx) => (
                       <div key={idx} className="p-3 hover:bg-slate-50 transition text-xs">
@@ -528,7 +602,10 @@ export default function PenangananTeknisPage() {
                           <span className="font-bold text-red-600">{item.rtg}</span>
                           <span className="text-[10px] text-slate-400">{item.jam}</span>
                         </div>
-                        <p className="text-slate-600 text-[11px] line-clamp-2">{item.praOperasi}</p>
+
+                        <p className="text-slate-600 text-[11px] line-clamp-2">
+                          {item.praOperasi !== "-" ? item.praOperasi : item.pascaOperasi}
+                        </p>
                       </div>
                     ))
                   )}
@@ -538,25 +615,56 @@ export default function PenangananTeknisPage() {
           </div>
 
           <div className="relative">
-            <button onClick={() => { setShowProfile(!showProfile); setShowNotif(false); }} className="flex items-center space-x-2.5 bg-[#134e4e] hover:bg-[#185d5d] px-3.5 py-1.5 rounded-full text-xs transition border border-emerald-700/50 cursor-pointer">
-              <div className="p-1 bg-emerald-500 rounded-full text-white"><User size={14} /></div>
-              <div className="text-left leading-tight">
-                <p className="font-semibold text-white text-[11px]">Tim Teknisi Lapangan</p>
-                <p className="text-[9px] text-emerald-200">On-Duty Operational</p>
+            <button
+              onClick={() => {
+                setShowProfile(!showProfile);
+                setShowNotif(false);
+                setMobileMenuOpen(false);
+              }}
+              className="flex items-center space-x-2 sm:space-x-2.5 bg-[#134e4e] hover:bg-[#185d5d] px-2.5 sm:px-3.5 py-1.5 rounded-full text-xs transition border border-emerald-700/50 cursor-pointer"
+            >
+              <div className="p-1 bg-emerald-500 rounded-full text-white">
+                <User size={14} />
+              </div>
+              <div className="text-left leading-tight hidden sm:block">
+                <p className="font-semibold text-white text-[11px]">Supervisi Lapangan</p>
+                <p className="text-[9px] text-emerald-200">Shift A • Pier 2</p>
               </div>
             </button>
 
             {showProfile && (
               <div className="absolute right-0 mt-3 w-64 bg-white text-slate-800 rounded-xl shadow-xl border border-slate-200 overflow-hidden z-50 p-4 space-y-3">
                 <div className="flex items-center space-x-3 border-b border-slate-100 pb-3">
-                  <div className="w-10 h-10 rounded-full bg-[#0b3c3c] text-white flex items-center justify-center font-bold text-sm">TK</div>
+                  <div className="w-10 h-10 rounded-full bg-[#0b3c3c] text-white flex items-center justify-center font-bold text-sm">
+                    SL
+                  </div>
                   <div>
-                    <h4 className="font-bold text-xs text-slate-800">Teknisi Lapangan</h4>
-                    <p className="text-[10px] text-slate-400">Status: On-Duty</p>
+                    <h4 className="font-bold text-xs text-slate-800">Bambang S.</h4>
+                    <p className="text-[10px] text-slate-400">ID Supervisor: #SPV-9942</p>
                   </div>
                 </div>
-                <button onClick={() => router.push("/")} className="w-full mt-2 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-xs font-semibold flex items-center justify-center space-x-1.5 transition">
-                  <LogOut size={14} /><span>Logout Sesi</span>
+
+                <div className="space-y-1.5 text-xs">
+                  <div className="flex justify-between text-slate-600">
+                    <span>Shift Tugas:</span>
+                    <span className="font-semibold text-slate-800">Shift A (07:00 - 15:00)</span>
+                  </div>
+                  <div className="flex justify-between text-slate-600">
+                    <span>Area Pengawasan:</span>
+                    <span className="font-semibold text-slate-800">Pier 2 Dermaga</span>
+                  </div>
+                  <div className="flex justify-between text-slate-600">
+                    <span>Status TOS:</span>
+                    <span className="text-emerald-600 font-semibold">Terhubung</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => router.push("/")}
+                  className="w-full mt-2 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-xs font-semibold flex items-center justify-center space-x-1.5 transition cursor-pointer"
+                >
+                  <LogOut size={14} />
+                  <span>Ganti Shift / Logout</span>
                 </button>
               </div>
             )}
@@ -564,78 +672,170 @@ export default function PenangananTeknisPage() {
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 mt-6 space-y-5">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      {/* DROPDOWN HAMBURGER MENU (KHUSUS MOBILE) */}
+      {mobileMenuOpen && (
+        <div className="lg:hidden bg-[#082e2e] text-white px-4 py-3 border-b border-emerald-800/40 space-y-2 shadow-lg animate-in slide-in-from-top duration-200">
+          {(role === "admin" || role === "operator") && (
+            <Link
+              href="/form-pelaporan"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
+                pathname === "/form-pelaporan"
+                  ? "bg-white text-[#0b3c3c]"
+                  : "text-slate-200 hover:bg-[#104848]"
+              }`}
+            >
+              Form Pelaporan
+            </Link>
+          )}
+
+          {(role === "admin" || role === "mcc") && (
+            <Link
+              href="/verifikasi-mcc"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
+                pathname === "/verifikasi-mcc"
+                  ? "bg-white text-[#0b3c3c]"
+                  : "text-slate-200 hover:bg-[#104848]"
+              }`}
+            >
+              Approval MCC
+            </Link>
+          )}
+
+          <Link
+            href="/dasboard"
+            onClick={() => setMobileMenuOpen(false)}
+            className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
+              pathname === "/dasboard"
+                ? "bg-white text-[#0b3c3c]"
+                : "text-slate-200 hover:bg-[#104848]"
+            }`}
+          >
+            Dashboard Monitoring
+          </Link>
+
+          {(role === "admin" || role === "teknisi") && (
+            <Link
+              href="/penanganan-teknis"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
+                pathname === "/penanganan-teknis"
+                  ? "bg-white text-[#0b3c3c]"
+                  : "text-slate-200 hover:bg-[#104848]"
+              }`}
+            >
+              Penanganan Teknisi
+            </Link>
+          )}
+        </div>
+      )}
+
+      {/* Main Container */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 mt-4 sm:mt-6 space-y-4 sm:space-y-5">
+        {/* Title & Action Section */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div>
             <div className="flex items-center space-x-2">
-              <h2 className="text-xl font-bold text-slate-900 tracking-tight">Monitoring & Penanganan Teknisi RTG</h2>
-              <span className="bg-emerald-100 text-emerald-800 text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center space-x-1">
+              <h2 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">Monitoring & Penanganan Teknisi RTG</h2>
+              <span className="bg-emerald-100 text-emerald-800 text-[9px] sm:text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center space-x-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                 <span>LIVE TOS SYNC</span>
               </span>
             </div>
-            <p className="text-slate-500 text-xs mt-0.5">Papan kendali work order penanganan kerusakan dan alokasi tim teknisi lapangan secara real-time.</p>
+            <p className="text-slate-500 text-xs mt-0.5 leading-relaxed">
+              Papan kendali work order penanganan kerusakan, inspeksi mekanikal-elektrikal, dan alokasi tim teknisi lapangan secara real-time.
+            </p>
           </div>
 
-          <button onClick={loadData} className="bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 px-3.5 py-2 rounded-lg text-xs font-medium flex items-center space-x-1.5 transition shadow-sm cursor-pointer">
-            <RefreshCw size={14} /><span>Refresh Data</span>
-          </button>
-        </div>
-
-        {/* Cards Summary */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white p-4 rounded-xl border border-slate-200 flex justify-between items-start shadow-sm">
-            <div>
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">TOTAL RTG DENGAN WO</p>
-              <h3 className="text-2xl font-extrabold mt-1 text-slate-800">{totalTiketAktif} <span className="text-xs font-normal text-slate-500">Unit</span></h3>
-            </div>
-            <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl"><FileText size={20} /></div>
-          </div>
-          <div className="bg-white p-4 rounded-xl border border-slate-200 flex justify-between items-start shadow-sm border-l-4 border-l-red-500">
-            <div>
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">PERLU PERBAIKAN SEGERA</p>
-              <h3 className="text-2xl font-extrabold mt-1 text-red-600">{butuhTindakanCepat} <span className="text-xs font-normal text-slate-500">(Unit)</span></h3>
-            </div>
-            <div className="p-2.5 bg-red-50 text-red-500 rounded-xl"><AlertOctagon size={20} /></div>
-          </div>
-          <div className="bg-white p-4 rounded-xl border border-slate-200 flex justify-between items-start shadow-sm">
-            <div>
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">TOTAL WORK ORDER</p>
-              <h3 className="text-2xl font-extrabold mt-1 text-slate-800">{totalWorkOrder} <span className="text-xs font-normal text-slate-500">Ticket</span></h3>
-            </div>
-            <div className="p-2.5 bg-blue-50 text-blue-600 rounded-xl"><Ticket size={20} /></div>
-          </div>
-          <div className="bg-white p-4 rounded-xl border border-slate-200 flex justify-between items-start shadow-sm">
-            <div>
-              <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">TEKNISI ON-DUTY</p>
-              <h3 className="text-2xl font-extrabold mt-1 text-slate-800">{totalTeknisiOnDuty} <span className="text-xs font-normal text-slate-500">Personel</span></h3>
-            </div>
-            <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-xl"><Users size={20} /></div>
+          <div className="flex items-center space-x-2.5 self-start md:self-auto">
+            <button
+              onClick={loadData}
+              className="bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 px-3.5 py-2 rounded-lg text-xs font-medium flex items-center space-x-1.5 transition shadow-sm cursor-pointer"
+            >
+              <RefreshCw size={14} />
+              <span>Refresh Data</span>
+            </button>
           </div>
         </div>
 
-        {/* Filter Bar */}
-        <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-3 justify-between items-center">
-          <div className="relative flex-1 w-full">
+        {/* Top Summary Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+          <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 flex justify-between items-start shadow-sm">
+            <div>
+              <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-wider">TOTAL RTG AKTIF</p>
+              <h3 className="text-xl sm:text-2xl font-extrabold mt-1 text-slate-800">
+                {totalTiketAktif} <span className="text-xs font-normal text-slate-500">Unit</span>
+              </h3>
+            </div>
+            <div className="p-2 sm:p-2.5 bg-blue-50 text-blue-600 rounded-xl"><FileText size={18} /></div>
+          </div>
+
+          <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 flex justify-between items-start shadow-sm border-l-4 border-l-red-500">
+            <div>
+              <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-wider">PERLU PERBAIKAN</p>
+              <h3 className="text-xl sm:text-2xl font-extrabold mt-1 text-red-600">
+                {butuhTindakanCepat} <span className="text-xs font-normal text-slate-500">(Unit)</span>
+              </h3>
+            </div>
+            <div className="p-2 sm:p-2.5 bg-red-50 text-red-500 rounded-xl"><AlertOctagon size={18} /></div>
+          </div>
+
+          <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 flex justify-between items-start shadow-sm">
+            <div>
+              <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-wider">WORK ORDER</p>
+              <h3 className="text-xl sm:text-2xl font-extrabold mt-1 text-slate-800">
+                {totalWorkOrder} <span className="text-xs font-normal text-slate-500">Ticket</span>
+              </h3>
+            </div>
+            <div className="p-2 sm:p-2.5 bg-blue-50 text-blue-600 rounded-xl"><Ticket size={18} /></div>
+          </div>
+
+          <div className="bg-white p-3.5 sm:p-4 rounded-xl border border-slate-200 flex justify-between items-start shadow-sm">
+            <div>
+              <p className="text-[9px] sm:text-[10px] font-bold text-slate-500 uppercase tracking-wider">TEKNISI ON-DUTY</p>
+              <h3 className="text-xl sm:text-2xl font-extrabold mt-1 text-slate-800">
+                {totalTeknisiOnDuty} <span className="text-xs font-normal text-slate-500">Personel</span>
+              </h3>
+            </div>
+            <div className="p-2 sm:p-2.5 bg-emerald-50 text-emerald-600 rounded-xl"><Users size={18} /></div>
+          </div>
+        </div>
+
+        {/* Search & Filter Bar */}
+        <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-2.5 sm:gap-3 justify-between items-center">
+          <div className="relative w-full md:flex-1">
             <Search className="absolute left-3 top-2.5 text-slate-400" size={15} />
-            <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Cari tiket, ID RTG, atau teknisi..." className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-emerald-500" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Cari tiket, ID RTG, atau teknisi..."
+              className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-emerald-500"
+            />
           </div>
-          <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
-            <select value={selectedBlokFilter} onChange={(e) => setSelectedBlokFilter(e.target.value)} className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none cursor-pointer">
-              <option value="SEMUA">Semua Blok (A, B, C, D, E)</option>
+
+          <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 w-full md:w-auto">
+            <select
+              value={selectedBlokFilter}
+              onChange={(e) => setSelectedBlokFilter(e.target.value)}
+              className="w-full sm:w-auto bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 text-xs font-medium text-slate-700 focus:outline-none cursor-pointer"
+            >
+              <option value="SEMUA">Semua Blok (A-E)</option>
               <option value="A">Blok A</option>
               <option value="B">Blok B</option>
               <option value="C">Blok C</option>
               <option value="D">Blok D</option>
               <option value="E">Blok E</option>
             </select>
+
             <select value={selectedUrgensiFilter} onChange={(e) => setSelectedUrgensiFilter(e.target.value)} className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none cursor-pointer">
               <option value="SEMUA">Tingkat Urgensi: Semua</option>
               <option value="P1">Priority 1 (P1)</option>
               <option value="P2">Priority 2 (P2)</option>
               <option value="P3">Priority 3 (P3)</option>
             </select>
+
             <select value={selectedTimFilter} onChange={(e) => setSelectedTimFilter(e.target.value)} className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-700 focus:outline-none cursor-pointer">
               <option value="SEMUA">Semua Tim Penugasan</option>
               <option value="Hidrolik">Tim Hidrolik</option>
@@ -643,6 +843,7 @@ export default function PenangananTeknisPage() {
               <option value="Mekanikal">Tim Mekanikal</option>
               <option value="Elektrikal">Tim Elektrikal/Genset</option>
             </select>
+
             <button onClick={handleResetFilter} className="text-slate-500 hover:text-slate-800 text-xs font-semibold px-2 py-1 transition cursor-pointer">Reset</button>
           </div>
         </div>
@@ -683,7 +884,11 @@ export default function PenangananTeknisPage() {
                     </div>
                     <div className="flex justify-between items-center pt-2 border-t border-slate-100">
                       <span className="text-[10px] text-slate-500 font-semibold">📍 {item.lokasi}</span>
-                      <button onClick={() => handleMulaiPengerjaan(item.workOrderId)} disabled={isSubmitting} className="px-3.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition cursor-pointer disabled:opacity-50">
+                      <button
+                        onClick={() => handleMulaiPengerjaan(item.workOrderId)}
+                        disabled={isSubmitting}
+                        className="px-3.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition cursor-pointer disabled:opacity-50"
+                      >
                         Mulai Kerjakan
                       </button>
                     </div>
@@ -800,6 +1005,7 @@ export default function PenangananTeknisPage() {
                   <p className="font-bold text-slate-700">{selectedReport.lokasi}</p>
                 </div>
                 <div>
+
                   <p className="text-slate-400">Prioritas Laporan:</p>
                   <p className="font-bold text-red-600">{selectedReport.prioritas}</p>
                 </div>
