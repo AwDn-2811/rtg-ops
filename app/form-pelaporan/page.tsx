@@ -226,52 +226,92 @@ export default function FormPelaporanPage() {
     setTimeout(async () => {
       try {
         // 1. Dapatkan data User yang sedang Login
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        const {
+          data: { user },
+          error: userError,
+        } = await supabase.auth.getUser();
         if (userError || !user) {
           throw new Error("Pengguna tidak terautentikasi.");
         }
 
-        // 2.Pastikan format unit_code sesuai dengan isi database (misal "RTG 38")
-        const formattedUnitCode = nomorRtg.startsWith("RTG") ? nomorRtg : `RTG ${nomorRtg}`;
+        // 2. Pastikan format unit_code sesuai dengan isi database (misal "RTG 38")
+        const formattedUnitCode = nomorRtg.startsWith("RTG")
+          ? nomorRtg
+          : `RTG ${nomorRtg}`;
 
-        // 3. Ambil ID dari unit RTG di tabel `rtg_statuses'
+        // 3. Ambil ID dari unit RTG di tabel `rtg_statuses`
         const { data: rtgUnitData, error: rtgFetchError } = await supabase
-        .from("rtg_statuses")
-        .select("id")
-        .ilike("unit_code", formattedUnitCode)
-        .maybeSingle();
+          .from("rtg_statuses")
+          .select("id")
+          .ilike("unit_code", formattedUnitCode)
+          .maybeSingle();
 
         if (rtgFetchError || !rtgUnitData) {
-           console.error("Gagal menemukan unit RTG di database:", rtgFetchError?.message);
-           alert(`Unit ${formattedUnitCode} tidak ditemukan di database rtg_statuses.`);
-           setIsSubmitting(false);
-           return;
+          console.error(
+            "Gagal menemukan unit RTG di database:",
+            rtgFetchError?.message
+          );
+          alert(`Unit ${formattedUnitCode} tidak ditemukan di database rtg_statuses.`);
+          setIsSubmitting(false);
+          return;
         }
 
-        // 4. Simpan Ke Tabel Supabase `rtg_reports`
+        // =========================================================================
+        // PERBAIKAN UTAMA: UPLOAD FILE KE SUPABASE STORAGE SEBELUM INSERT
+        // =========================================================================
+        let uploadedUrls: string[] = [];
 
+        if (selectedFiles && selectedFiles.length > 0) {
+          for (const file of selectedFiles) {
+            const fileExt = file.name.split(".").pop();
+            const fileName = `${Date.now()}_${Math.random()
+              .toString(36)
+              .substring(2, 7)}.${fileExt}`;
+            const filePath = `reports/${fileName}`;
+
+            // Upload ke Supabase Storage (Pastikan nama bucket "rtg_media" sudah dibuat & status PUBLIC)
+            const { error: uploadError } = await supabase.storage
+              .from("rtg_media")
+              .upload(filePath, file);
+
+            if (uploadError) {
+              console.error(`Gagal upload ${file.name}:`, uploadError.message);
+            } else {
+              // Dapatkan Public URL setelah file berhasil terunggah
+              const { data: publicUrlData } = supabase.storage
+                .from("rtg_media")
+                .getPublicUrl(filePath);
+
+              if (publicUrlData?.publicUrl) {
+                uploadedUrls.push(publicUrlData.publicUrl);
+              }
+            }
+          }
+        }
+
+        // 4. Simpan ke Tabel Supabase `rtg_reports` dengan URL media yang valid
         const { error: insertReportError } = await supabase
-        .from("rtg_reports")
-        .insert([
-          {
-            rtg_id: rtgUnitData.id,
-            pelapor_id: user.id,
-            report_date: new Date().toISOString(),
-            findings: deskripsiKendala,
-            verification_status: "PENDING", // Menggunakan nilai yang lolos Check Constraint
-            priority: 3,
-          },
-        ]);
+          .from("rtg_reports")
+          .insert([
+            {
+              rtg_id: rtgUnitData.id,
+              pelapor_id: user.id,
+              report_date: new Date().toISOString(),
+              findings: deskripsiKendala,
+              verification_status: "PENDING",
+              priority: 3, // Diisi tipe number 3 (bukan string "3" jika tipe kolom int4)
+              evidence_url: uploadedUrls, // <--- SUDAH TERISI ARRAY URL PUBLIC (misal: ["https://..."])
+            },
+          ]);
 
         if (insertReportError) {
           console.error("Gagal simpan ke rtg_reports:", insertReportError.message);
           alert(`Gagal menyimpan laporan: ${insertReportError.message}`);
-        } 
-        else {
+        } else {
           console.log("Berhasil menyimpan laporan ke rtg_reports!");
         }
 
-        // 5. OTOMATIS UPDATE Status di tabel `rtg_statuses` dari READY -> NEED_REPAIR
+        // 5. Update Status di tabel `rtg_statuses` dari READY -> NEED_REPAIR
         const { error: updateRtgStatusError } = await supabase
           .from("rtg_statuses")
           .update({
@@ -282,22 +322,41 @@ export default function FormPelaporanPage() {
           .eq("id", rtgUnitData.id);
 
         if (updateRtgStatusError) {
-          console.error("Gagal update status RTG:", updateRtgStatusError.message);
+          console.error(
+            "Gagal update status RTG:",
+            updateRtgStatusError.message
+          );
         }
 
-        // Simpan juga ke localStorage sebagai fallback / sync data sementara frontend
+        // 6. Simpan ke localStorage (Untuk cadangan / sync temporary frontend)
         const mediaBase64Promises = selectedFiles.map((file) => {
-          return new Promise<{ type: string; url: string; name: string }>((resolve) => {
-            const isVideo = file.type.startsWith("video/");
-            if (file.size > 1.5 * 1024 * 1024) {
-              resolve({ type: isVideo ? "video" : "image", url: "", name: file.name });
-              return;
+          return new Promise<{ type: string; url: string; name: string }>(
+            (resolve) => {
+              const isVideo = file.type.startsWith("video/");
+              if (file.size > 1.5 * 1024 * 1024) {
+                resolve({
+                  type: isVideo ? "video" : "image",
+                  url: "",
+                  name: file.name,
+                });
+                return;
+              }
+              const reader = new FileReader();
+              reader.onload = () =>
+                resolve({
+                  type: isVideo ? "video" : "image",
+                  url: reader.result as string,
+                  name: file.name,
+                });
+              reader.onerror = () =>
+                resolve({
+                  type: isVideo ? "video" : "image",
+                  url: "",
+                  name: file.name,
+                });
+              reader.readAsDataURL(file);
             }
-            const reader = new FileReader();
-            reader.onload = () => resolve({ type: isVideo ? "video" : "image", url: reader.result as string, name: file.name });
-            reader.onerror = () => resolve({ type: isVideo ? "video" : "image", url: "", name: file.name });
-            reader.readAsDataURL(file);
-          });
+          );
         });
 
         const mediaArray = await Promise.all(mediaBase64Promises);
@@ -305,7 +364,11 @@ export default function FormPelaporanPage() {
         const newReport = {
           id: Date.now(),
           tanggal,
-          jam: new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) + " WIB",
+          jam:
+            new Date().toLocaleTimeString("id-ID", {
+              hour: "2-digit",
+              minute: "2-digit",
+            }) + " WIB",
           rtg: formattedUnitCode,
           lokasi: lokasiBlok || "BLOK A",
           pelapor: "Supervisi Lapangan",
@@ -316,15 +379,22 @@ export default function FormPelaporanPage() {
           status: "MENUNGGU VERIFIKASI MCC",
           teknisi: "Belum Ditugaskan",
           lampiranMedia: mediaArray,
-          fotoBukti: mediaArray.filter((m) => m.type === "image" && m.url !== "").map((m) => m.url),
+          fotoBukti: mediaArray
+            .filter((m) => m.type === "image" && m.url !== "")
+            .map((m) => m.url),
           selectedFiles: selectedFiles.map((f) => f.name),
         };
 
-        const existingReports = JSON.parse(localStorage.getItem("rtg_reports") || "[]");
-          try {
-            localStorage.setItem("rtg_reports", JSON.stringify([newReport, ...existingReports]));
-          } catch (storageError) {
-            localStorage.setItem("rtg_reports", JSON.stringify([newReport]));
+        const existingReports = JSON.parse(
+          localStorage.getItem("rtg_reports") || "[]"
+        );
+        try {
+          localStorage.setItem(
+            "rtg_reports",
+            JSON.stringify([newReport, ...existingReports])
+          );
+        } catch (storageError) {
+          localStorage.setItem("rtg_reports", JSON.stringify([newReport]));
         }
 
         setIsSubmitting(false);

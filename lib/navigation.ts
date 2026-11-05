@@ -31,14 +31,4 @@ export const navigationMenus: MenuItem[] = [
     href: "/penanganan-teknis",
     roles: ["admin", "teknisi"],
   },
-//   {
-//     label: "Monitoring RTG",
-//     href: "/monitoring-rtg",
-//     roles: ["admin"],
-//   },
-//   {
-//     label: "Manajemen User",
-//     href: "/manajemen-user",
-//     roles: ["admin"],
-//   },
 ];

@@ -11,8 +11,7 @@ import {
   CheckCircle2, 
   AlertOctagon, 
   FileText, 
-  Plus,
-  Clock, 
+  Plus, 
   Search, 
   ChevronRight,
   Download,
@@ -213,15 +212,13 @@ export default function DashboardPage() {
   });
 
   // Pemetaan rtgUnits gabungan Supabase & Laporan aktif
+  // REVISI: Status PERBAIKAN hanya diset jika terdapat laporan aktif di state `reports`
   const rtgUnits = rtgStatuses.map((item) => {
-    const isRepair =
-      item.status?.toUpperCase() === "NEED_REPAIR" ||
-      item.status?.toUpperCase() === "PERBAIKAN";
-
-    // Cari laporan aktif terkini untuk unit RTG ini jika ada
     const activeReport = reports.find(
       (r) => r.rtg.toUpperCase() === item.unit_code.toUpperCase()
     );
+
+    const isRepair = Boolean(activeReport);
 
     return {
       id: item.unit_code,
@@ -234,17 +231,9 @@ export default function DashboardPage() {
     };
   });
 
-  const totalPerbaikan = rtgStatuses.filter(
-    (item) =>
-      item.status?.toUpperCase() === "NEED_REPAIR" ||
-      item.status?.toUpperCase() === "PERBAIKAN"
-  ).length;
-
-  const totalNormal = rtgStatuses.filter(
-    (item) =>
-      item.status?.toUpperCase() === "READY" ||
-      item.status?.toUpperCase() === "NORMAL"
-  ).length;
+  // REVISI: Perhitungan total perbaikan & normal dihitung berdasarkan dynamic rtgUnits
+  const totalPerbaikan = rtgUnits.filter((item) => item.status === "PERBAIKAN").length;
+  const totalNormal = rtgUnits.filter((item) => item.status === "NORMAL").length;
 
   // Handler saat Card RTG Diklik
   const handleCardClick = (unit: RTGCardItem) => {
@@ -352,10 +341,24 @@ export default function DashboardPage() {
     );
   };
 
-  const clearData = () => {
-    if (confirm("Apakah Anda yakin ingin mengosongkan semua data laporan?")) {
+  // REVISI: Fungsi hapus laporan sekaligus meng-update status unit di Supabase menjadi READY
+  const clearData = async () => {
+    if (confirm("Apakah Anda yakin ingin mengosongkan semua data laporan? Status RTG akan kembali READY.")) {
       localStorage.removeItem("rtg_reports");
       setReports([]);
+
+      try {
+        const { error } = await supabase
+          .from("rtg_statuses")
+          .update({ status: "READY", last_updated: new Date().toISOString() })
+          .neq("id", 0);
+
+        if (error) {
+          console.error("Gagal memperbarui status Supabase:", error.message);
+        }
+      } catch (err) {
+        console.error("Database update error:", err);
+      }
     }
   };
 
@@ -579,9 +582,9 @@ export default function DashboardPage() {
           <div className="bg-white p-4 rounded-xl border border-slate-200 flex justify-between items-start shadow-sm">
             <div>
               <p className="text-xs text-slate-500 font-medium">RTG Beroperasi Normal</p>
-              <h3 className="text-2xl font-bold mt-1 text-slate-800">{totalNormal} <span className="text-xs font-normal text-slate-500">dari 35 unit</span></h3>
+              <h3 className="text-2xl font-bold mt-1 text-slate-800">{totalNormal} <span className="text-xs font-normal text-slate-500">dari {rtgUnits.length} unit</span></h3>
               <p className="text-[11px] text-emerald-600 mt-2 font-medium">
-                • {Math.round((totalNormal / 35) * 100)}% Kesiapan Operasi
+                • {rtgUnits.length > 0 ? Math.round((totalNormal / rtgUnits.length) * 100) : 100}% Kesiapan Operasi
               </p>
             </div>
             <div className="p-2 bg-emerald-50 text-emerald-600 rounded-lg"><CheckCircle2 size={20} /></div>
