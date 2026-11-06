@@ -155,10 +155,14 @@ export default function LoginPage() {
     // 4. Redirect berdasarkan role
     switch (profile.role) {
       case "admin":
-      case "operator":
       case "mcc":
       case "teknisi":
         router.replace("/dasboard");
+        break;
+
+      case "operator":
+        // Role operator langsung diarahkan ke Form Pelaporan
+        router.replace("/form-pelaporan");
         break;
 
       default:
