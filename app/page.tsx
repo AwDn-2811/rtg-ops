@@ -229,7 +229,7 @@ export default function LoginPage() {
         <div className="brand">
           <div className="brand-logo">
             <img
-              src="/images/TPS.png"
+              src="/images/TPS.webp"
               alt="Logo Terminal Petikemas Surabaya"
             />
           </div>
