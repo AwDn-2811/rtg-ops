@@ -10,7 +10,7 @@ import {
   User, 
   CheckCircle2, 
   AlertOctagon, 
-  FileText, 
+  FileText,
   Plus, 
   Search, 
   ChevronRight,

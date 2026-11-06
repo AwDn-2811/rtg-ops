@@ -168,10 +168,34 @@ export default function FormPelaporanPage() {
     }
   };
 
+  const ALLOWED_MIME_TYPES = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "video/mp4",
+  "video/quicktime",
+  "video/webm",
+  ];
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const filesArray = Array.from(e.target.files);
-      const newFiles = [...selectedFiles, ...filesArray].slice(0, 3);
+      
+      // Filter file hanya yang sesuai format gambar atau video
+      const validFiles = filesArray.filter((file) => {
+        const isValidType = ALLOWED_MIME_TYPES.includes(file.type);
+        if (!isValidType) {
+          alert(`File "${file.name}" ditolak. Format file tidak diizinkan! Hanya foto (JPG, PNG, WEBP) dan video (MP4, MOV, WEBM) yang diperbolehkan.`);
+        }
+        return isValidType;
+      });
+
+      if (validFiles.length === 0) {
+        if (fileInputRef.current) fileInputRef.current.value = "";
+        return;
+      }
+
+      const newFiles = [...selectedFiles, ...validFiles].slice(0, 3);
       setSelectedFiles(newFiles);
 
       const previews = newFiles.map((file) => ({
