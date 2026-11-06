@@ -525,6 +525,19 @@ export default function FormPelaporanPage() {
               Penanganan Teknisi
             </Link>
           )}
+
+          {(role === "admin" || role === "mcc") && (
+            <Link
+              href="/audit-log"
+              className={`px-5 py-2 rounded-full transition font-semibold ${
+                pathname === "/audit-log"
+                  ? "bg-white text-[#0b3c3c] shadow"
+                  : "text-slate-300 hover:text-white"
+              }`}
+            >
+              Audit Log
+            </Link>
+          )}
         </nav>
 
         {/* Notifikasi & Profile Pop-up */}

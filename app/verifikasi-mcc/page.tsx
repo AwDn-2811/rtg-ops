@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { createAuditLog } from "@/lib/auditLogger";
 import {
   Bell,
   User,
@@ -435,7 +436,6 @@ export default function ApprovalMCCPage() {
 
       console.log("Hasil Update rtg_reports:", updateData);
 
-      // 2. CEK DAN UPSERT WORK ORDER
     // 2. CEK DAN UPSERT WORK ORDER
       const { data: existingWO } = await supabase
         .from("work_orders")
@@ -472,6 +472,15 @@ export default function ApprovalMCCPage() {
           return;
         }
       }
+
+          await createAuditLog({
+        userId: currentUserId,
+        userName: "Operator MCC",
+        userRole: role,
+        action: "MCC_APPROVE",
+        description: `MCC meluluskan laporan unit ${selectedReport?.rtg} dengan Prioriti P${priorityNum} dan menugaskan teknisi.`,
+        targetId: reportId,
+      });
 
       // 3. UPDATE STATUS UNIT RTG
       if (selectedReport?.rtg_id) {
@@ -587,6 +596,19 @@ export default function ApprovalMCCPage() {
           <Link href="/dasboard" className={`px-5 py-2 rounded-full transition font-semibold ${pathname === "/dasboard" ? "bg-white text-[#0b3c3c] shadow" : "text-slate-300 hover:text-white"}`}>Dashboard Monitoring</Link>
           {(role === "admin" || role === "teknisi") && (
             <Link href="/penanganan-teknis" className={`px-5 py-2 rounded-full transition font-semibold ${pathname === "/penanganan-teknis" ? "bg-white text-[#0b3c3c] shadow" : "text-slate-300 hover:text-white"}`}>Penanganan Teknisi</Link>
+          )}
+
+          {(role === "admin" || role === "mcc") && (
+            <Link
+              href="/audit-log"
+              className={`px-5 py-2 rounded-full transition font-semibold ${
+                pathname === "/audit-log"
+                  ? "bg-white text-[#0b3c3c] shadow"
+                  : "text-slate-300 hover:text-white"
+              }`}
+            >
+              Audit Log
+            </Link>
           )}
         </nav>
 

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { createAuditLog } from "@/lib/auditLogger";
 import {
   Bell,
   User,
@@ -412,6 +413,15 @@ const handleHoldWaitingPack = async (workOrderId?: string) => {
     return;
   }
 
+  await createAuditLog({
+  userId: currentUserId,
+  userName: "Teknisi Lapangan",
+  userRole: role,
+  action: "HOLD_WAITING_PACK",
+  description: `Penanganan unit ${selectedReport?.rtg} ditunda (Waiting Pack). Memerlukan sparepart: ${namaSparepart}`,
+  targetId: workOrderId,
+});
+
   try {
     setIsSubmitting(true);
     const { error } = await supabase
@@ -606,6 +616,20 @@ const handleHoldWaitingPack = async (workOrderId?: string) => {
               }`}
             >
               Penanganan Teknisi
+            </Link>
+          )}
+
+
+          {(role === "admin" || role === "mcc") && (
+            <Link
+              href="/audit-log"
+              className={`px-5 py-2 rounded-full transition font-semibold ${
+                pathname === "/audit-log"
+                  ? "bg-white text-[#0b3c3c] shadow"
+                  : "text-slate-300 hover:text-white"
+              }`}
+            >
+              Audit Log
             </Link>
           )}
         </nav>
