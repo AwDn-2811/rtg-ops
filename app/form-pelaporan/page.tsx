@@ -103,7 +103,6 @@ export default function FormPelaporanPage() {
 
   const [nomorRtg, setNomorRtg] = useState("");
   const [lokasiBlok, setLokasiBlok] = useState("");
-  const [kategori, setKategori] = useState("");
   const [deskripsiKendala, setDeskripsiKendala] = useState("");
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [filePreviews, setFilePreviews] = useState<{ name: string; type: string; url: string }[]>([]);
@@ -141,13 +140,7 @@ export default function FormPelaporanPage() {
 
   const rtgOptions = Array.from({ length: 35 }, (_, i) => 38 + i);
 
-  const kategoriList = [
-    "Sistem Hidrolik",
-    "Spreader & Twistlock",
-    "Hoist & Motor",
-    "Sistem Elektrikal / Genset",
-    "Gantry & Ban",
-  ];
+
 
   const quickTexts = [
     "Kebocoran oli hidrolik pada sling hoist",
@@ -375,7 +368,6 @@ export default function FormPelaporanPage() {
           pelapor: "Supervisi Lapangan",
           praOperasi: deskripsiKendala,
           pascaOperasi: "-",
-          kategori: kategori || "Kendala Umum",
           prioritas: "MENUNGGU MCC",
           status: "MENUNGGU VERIFIKASI MCC",
           teknisi: "Belum Ditugaskan",
@@ -412,7 +404,6 @@ export default function FormPelaporanPage() {
     setIsSuccess(false);
     setNomorRtg("");
     setLokasiBlok("");
-    setKategori("");
     setDeskripsiKendala("");
     setSelectedFiles([]);
     setFilePreviews([]);
@@ -741,27 +732,7 @@ export default function FormPelaporanPage() {
               </div>
             )}
 
-            {/* Kategori Utama */}
-            <div>
-              <label className="text-xs font-bold text-slate-700 flex items-center space-x-1.5 mb-2">
-                <Wrench size={14} className="text-slate-500" />
-                <span>Kategori Utama Kendala</span>
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {kategoriList.map((kat) => (
-                  <button
-                    type="button"
-                    key={kat}
-                    onClick={() => setKategori(kat === kategori ? "" : kat)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium border transition ${
-                      kategori === kat ? "bg-[#0b3c3c] text-white border-[#0b3c3c]" : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
-                    }`}
-                  >
-                    {kat}
-                  </button>
-                ))}
-              </div>
-            </div>
+        
 
             {/* Template Teks Cepat */}
             <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
