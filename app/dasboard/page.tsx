@@ -145,7 +145,7 @@ export default function DashboardPage() {
           return;
         }
 
-        const allowedRoles = ["admin", "operator", "mcc", "teknisi"];
+        const allowedRoles = ["admin", "mcc", "operator", "teknisi"];
 
         if (!allowedRoles.includes(profile.role)) {
           router.replace("/dasboard");
@@ -581,16 +581,18 @@ export default function DashboardPage() {
             </Link>
           )}
 
-          <Link
-            href="/dasboard"
-            className={`px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-full transition font-semibold whitespace-nowrap ${
-              pathname === "/dasboard"
-                ? "bg-white text-[#0b3c3c] shadow"
-                : "text-slate-300 hover:text-white"
-            }`}
-          >
-            Dashboard Monitoring
-          </Link>
+          {(role === "admin" || role === "mcc" || role === "teknisi") && (
+            <Link
+              href="/dasboard"
+              className={`px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-full transition font-semibold whitespace-nowrap ${
+                pathname === "/dasboard"
+                  ? "bg-white text-[#0b3c3c] shadow"
+                  : "text-slate-300 hover:text-white"
+              }`}
+            >
+              Dashboard
+            </Link>
+          )}
 
           {(role === "admin" || role === "teknisi") && (
             <Link
@@ -707,7 +709,7 @@ export default function DashboardPage() {
                     className="w-full py-2 px-3 bg-emerald-50 hover:bg-emerald-100 text-[#0b3c3c] border border-emerald-200 rounded-lg text-xs font-bold flex items-center justify-center space-x-2 transition cursor-pointer"
                   >
                     <UserPlus size={14} className="text-[#0b3c3c]" />
-                    <span>Kelola & Tambah User</span>
+                    <span>Kelola / Tambah User</span>
                   </button>
                 )}
 
