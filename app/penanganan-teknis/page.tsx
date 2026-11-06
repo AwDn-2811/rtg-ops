@@ -983,8 +983,8 @@ const handleHoldWaitingPack = async (workOrderId?: string) => {
                 tiketDikerjakan.map((item) => (
                   <div key={item.id} className="bg-white rounded-xl p-4 shadow-sm border border-slate-200 space-y-3">
                     <div className="flex justify-between items-start">
-                      <span className="text-[10px] font-black px-2 py-0.5 rounded bg-blue-100 text-blue-800">{item.prioritas || "P3"} • IN-PROGRESS</span>
-                      <span className="text-[11px] text-slate-500 font-medium">⏱ Mulai: {item.waktuMulai || item.jam}</span>
+                      <span className="text-[10px] font-black px-0 py-0.5 rounded bg-blue-100 text-blue-800">{item.prioritas || "P3"} • IN-PROGRESS</span>
+                      <span className="text-[10px] text-slate-500 font-medium">⏱ Mulai: {item.waktuMulai || item.jam}</span>
                     </div>
                     <div>
                       <span className="font-extrabold text-sm text-slate-900 block">{item.rtg}</span>
