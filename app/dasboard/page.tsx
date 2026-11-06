@@ -21,7 +21,11 @@ import {
   Wrench,
   MapPin,
   ShieldCheck,
-  Menu
+  Menu,
+  UserPlus,
+  Users,
+  Shield,
+  Key
 } from "lucide-react";
 
 interface Report {
@@ -57,6 +61,14 @@ interface RTGCardItem {
   reportDetails?: Report | null;
 }
 
+interface UserProfile {
+  id: string;
+  full_name: string;
+  employee_id: string;
+  role: "admin" | "operator" | "mcc" | "teknisi";
+  is_active: boolean;
+}
+
 export default function DashboardPage() {
   const router = useRouter();
   const pathname = usePathname();
@@ -76,6 +88,25 @@ export default function DashboardPage() {
   // State Modal Card RTG
   const [selectedRtgCard, setSelectedRtgCard] = useState<RTGCardItem | null>(null);
   const [showRtgModal, setShowRtgModal] = useState(false);
+
+  // State RBAC & User Management Modal
+  const [showUserManagementModal, setShowUserManagementModal] = useState(false);
+  const [userList, setUserList] = useState<UserProfile[]>([]);
+  const [selectedRoleTab, setSelectedRoleTab] = useState<string>("admin");
+  const [newUserEmail, setNewUserEmail] = useState("");
+  const [newUserPassword, setNewUserPassword] = useState("");
+  const [newUserName, setNewUserName] = useState("");
+  const [newUserEmployeeId, setNewUserEmployeeId] = useState("");
+  const [newUserRole, setNewUserRole] = useState<"admin" | "operator" | "mcc" | "teknisi">("operator");
+  const [isCreatingUser, setIsCreatingUser] = useState(false);
+
+  // State untuk menampung user yang sedang diedit
+  const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editEmployeeId, setEditEmployeeId] = useState("");
+  const [editRole, setEditRole] = useState<"admin" | "operator" | "mcc" | "teknisi">("operator");
+  const [editIsActive, setEditIsActive] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   // Supabase Client & Role Check
   const supabase = createClient();
@@ -141,7 +172,129 @@ export default function DashboardPage() {
     };
   }, [router, supabase]);
 
-  // Realtime Supabase
+  // Fetch User Profiles untuk Admin
+  const fetchUserProfiles = async () => {
+    const { data, error } = await supabase
+      .from("profiles")
+      .select("id, full_name, employee_id, role, is_active")
+      .order("full_name", { ascending: true });
+
+    if (!error && data) {
+      setUserList(data as UserProfile[]);
+    }
+  };
+
+  const handleOpenUserManagement = () => {
+    setShowProfile(false);
+    setShowUserManagementModal(true);
+    fetchUserProfiles();
+  };
+
+  // Fungsi Tambah User Baru
+  const handleCreateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newUserEmail || !newUserPassword || !newUserName || !newUserEmployeeId) {
+      alert("Mohon lengkapi semua data pendaftaran user baru (termasuk Employee ID).");
+      return;
+    }
+
+    setIsCreatingUser(true);
+    try {
+      // Cukup signUp dengan menyertakan metadata. Trigger PostgreSQL akan otomatis mengisi tabel profiles!
+      const { data, error } = await supabase.auth.signUp({
+        email: newUserEmail,
+        password: newUserPassword,
+        options: {
+          data: {
+            full_name: newUserName,
+            employee_id: newUserEmployeeId,
+            role: newUserRole,
+          },
+        },
+      });
+
+      if (error) throw error;
+
+      if (data.user) {
+        alert(`User baru (${newUserName} - ${newUserEmployeeId}) berhasil dibuat!`);
+        setNewUserEmail("");
+        setNewUserPassword("");
+        setNewUserName("");
+        setNewUserEmployeeId("");
+        
+        // Beri sedikit jeda waktu agar trigger selesai memasukkan data sebelum memuat ulang tabel
+        setTimeout(() => {
+          fetchUserProfiles();
+        }, 500);
+      }
+    } catch (err: any) {
+      alert(`Gagal membuat user: ${err.message}`);
+    } finally {
+      setIsCreatingUser(false);
+    }
+  };
+
+  // Handler untuk membuka modal/form edit
+  const handleStartEdit = (user: UserProfile) => {
+    setEditingUser(user);
+    setEditName(user.full_name);
+    setEditEmployeeId(user.employee_id || "");
+    setEditRole(user.role);
+    setEditIsActive(user.is_active);
+  };
+
+  // Handler untuk simpan perubahan (UPDATE ke Supabase)
+  const handleSaveUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+
+    setIsUpdating(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          full_name: editName,
+          employee_id: editEmployeeId,
+          role: editRole,
+          is_active: editIsActive,
+        })
+        .eq("id", editingUser.id);
+
+      if (error) throw error;
+
+      alert(`Data user ${editName} berhasil diperbarui!`);
+      setEditingUser(null);
+      fetchUserProfiles();
+    } catch (err: any) {
+      alert(`Gagal memperbarui user: ${err.message}`);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleDeleteUser = async (userId: string, userName: string) => {
+    const confirmDelete = confirm(
+      `Apakah Anda yakin ingin menghapus permanen user "${userName}"?\nTindakan ini tidak dapat dibatalkan.`
+    );
+
+    if (!confirmDelete) return;
+
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .delete()
+        .eq("id", userId);
+
+      if (error) throw error;
+
+      alert(`User "${userName}" berhasil dihapus dari sistem!`);
+      fetchUserProfiles();
+    } catch (err: any) {
+      alert(`Gagal menghapus user: ${err.message}`);
+    }
+  };
+
+  // Realtime Supabase Status RTG
   useEffect(() => {
     let isMounted = true;
 
@@ -153,9 +306,7 @@ export default function DashboardPage() {
 
       if (error) {
         console.error("Gagal mengambil data RTG:", error.message);
-        if (isMounted) {
-          setRtgLoading(false);
-        }
+        if (isMounted) setRtgLoading(false);
         return;
       }
 
@@ -236,15 +387,15 @@ export default function DashboardPage() {
     };
   });
 
-  // REVISI: Perhitungan total perbaikan & normal dihitung berdasarkan dynamic rtgUnits
   const totalPerbaikan = rtgUnits.filter((item) => item.status === "PERBAIKAN").length;
   const totalNormal = rtgUnits.filter((item) => item.status === "NORMAL").length;
+
   const handleCardClick = (unit: RTGCardItem) => {
     setSelectedRtgCard(unit);
     setShowRtgModal(true);
   };
 
-  // Chart Data Calculation
+  // Kalkulasi Data Grafik
   const rtgCounts: Record<string, number> = {};
   reports.forEach((r) => {
     rtgCounts[r.rtg] = (rtgCounts[r.rtg] || 0) + 1;
@@ -344,7 +495,6 @@ export default function DashboardPage() {
     );
   };
 
-  // REVISI: Fungsi hapus laporan sekaligus meng-update status unit di Supabase menjadi READY
   const clearData = async () => {
     if (confirm("Apakah Anda yakin ingin mengosongkan semua data laporan? Status RTG akan kembali READY.")) {
       localStorage.removeItem("rtg_reports");
@@ -375,10 +525,9 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-800 font-sans text-sm pb-10">
-      {/* Header / Navbar Responsif */}
+      {/* Header / Navbar */}
       <header className="bg-[#0b3c3c] text-white px-4 sm:px-8 py-3.5 sm:py-4 flex items-center justify-between shadow-md relative z-50">
         <div className="flex items-center gap-2.5 sm:gap-3 shrink-0">
-          {/* Tombol Hamburger khusus HP */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="p-1.5 text-slate-200 hover:text-white lg:hidden rounded-lg hover:bg-[#134e4e] transition cursor-pointer"
@@ -389,7 +538,7 @@ export default function DashboardPage() {
 
           <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center">
             <img
-              src="/images/logopelindo.png"
+              src="/images/logopelindo.webp"
               alt="Logo Pelindo"
               width={48}
               height={48}
@@ -457,7 +606,7 @@ export default function DashboardPage() {
           )}
         </nav>
 
-        {/* Action Right: Notif & Profile */}
+        {/* Profile & Notif */}
         <div className="flex items-center space-x-2 sm:space-x-4 shrink-0">
           <div className="relative">
             <button
@@ -517,7 +666,9 @@ export default function DashboardPage() {
               </div>
               <div className="text-left leading-tight hidden sm:block">
                 <p className="font-semibold text-white text-xs">Supervisi Lapangan</p>
-                <p className="text-[10px] text-emerald-200">Shift A - Pier 2</p>
+                <p className="text-[10px] text-emerald-200">
+                  Role: <span className="uppercase font-bold">{role}</span>
+                </p>
               </div>
             </button>
 
@@ -535,18 +686,30 @@ export default function DashboardPage() {
 
                 <div className="space-y-1.5 text-xs">
                   <div className="flex justify-between text-slate-600">
-                    <span>Shift Tugas:</span>
-                    <span className="font-semibold text-slate-800">Shift A (07:00 - 15:00)</span>
+                    <span>Role Akses:</span>
+                    <span className="font-bold text-[#0b3c3c] uppercase bg-emerald-50 px-2 py-0.5 rounded text-[10px]">
+                      {role}
+                    </span>
                   </div>
                   <div className="flex justify-between text-slate-600">
-                    <span>Area Pengawasan:</span>
-                    <span className="font-semibold text-slate-800">Pier 2 Dermaga</span>
+                    <span>Shift Tugas:</span>
+                    <span className="font-semibold text-slate-800">Shift A (07:00 - 15:00)</span>
                   </div>
                   <div className="flex justify-between text-slate-600">
                     <span>Status TOS:</span>
                     <span className="text-emerald-600 font-semibold">Terhubung</span>
                   </div>
                 </div>
+
+                {role === "admin" && (
+                  <button
+                    onClick={handleOpenUserManagement}
+                    className="w-full py-2 px-3 bg-emerald-50 hover:bg-emerald-100 text-[#0b3c3c] border border-emerald-200 rounded-lg text-xs font-bold flex items-center justify-center space-x-2 transition cursor-pointer"
+                  >
+                    <UserPlus size={14} className="text-[#0b3c3c]" />
+                    <span>Kelola & Tambah User</span>
+                  </button>
+                )}
 
                 <button
                   onClick={() => router.push("/")}
@@ -560,65 +723,6 @@ export default function DashboardPage() {
           </div>
         </div>
       </header>
-
-      {/* DROPDOWN HAMBURGER MENU (KHUSUS MOBILE) */}
-      {mobileMenuOpen && (
-        <div className="lg:hidden bg-[#082e2e] text-white px-4 py-3 border-b border-emerald-800/40 space-y-2 shadow-lg animate-in slide-in-from-top duration-200">
-          {(role === "admin" || role === "operator") && (
-            <Link
-              href="/form-pelaporan"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
-                pathname === "/form-pelaporan"
-                  ? "bg-white text-[#0b3c3c]"
-                  : "text-slate-200 hover:bg-[#104848]"
-              }`}
-            >
-              Form Pelaporan
-            </Link>
-          )}
-
-          {(role === "admin" || role === "mcc") && (
-            <Link
-              href="/verifikasi-mcc"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
-                pathname === "/verifikasi-mcc"
-                  ? "bg-white text-[#0b3c3c]"
-                  : "text-slate-200 hover:bg-[#104848]"
-              }`}
-            >
-              Approval MCC
-            </Link>
-          )}
-
-          <Link
-            href="/dasboard"
-            onClick={() => setMobileMenuOpen(false)}
-            className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
-              pathname === "/dasboard"
-                ? "bg-white text-[#0b3c3c]"
-                : "text-slate-200 hover:bg-[#104848]"
-            }`}
-          >
-            Dashboard Monitoring
-          </Link>
-
-          {(role === "admin" || role === "teknisi") && (
-            <Link
-              href="/penanganan-teknis"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
-                pathname === "/penanganan-teknis"
-                  ? "bg-white text-[#0b3c3c]"
-                  : "text-slate-200 hover:bg-[#104848]"
-              }`}
-            >
-              Penanganan Teknisi
-            </Link>
-          )}
-        </div>
-      )}
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 mt-4 sm:mt-6 space-y-4 sm:space-y-6">
@@ -654,7 +758,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Top Summary Cards Responsif */}
+        {/* Summary Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
           <div className="bg-white p-4 rounded-xl border border-slate-200 flex justify-between items-start shadow-sm">
             <div>
@@ -709,7 +813,6 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* GRID RESPONSIVE */}
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2.5 sm:gap-3">
             {rtgUnits.map((item) => (
               <div 
@@ -741,9 +844,9 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Bottom Section: Chart & Table */}
+        {/* BOTTOM SECTION: GRAFIK & TABEL LAPORAN */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-          {/* Grafik Laporan Kendala */}
+          {/* 1. GRAFIK LAPORAN KENDALA */}
           <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
             <div>
               <div className="flex justify-between items-center mb-1">
@@ -835,7 +938,7 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Laporan Kendala Terbaru */}
+          {/* 2. TABEL LAPORAN KENDALA TERBARU */}
           <div className="lg:col-span-2 bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
             <div>
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
@@ -859,7 +962,7 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* Filter Tombol Kategori Horizontal Scroll */}
+              {/* Filter Kategori */}
               <div className="flex items-center space-x-1.5 mb-3 overflow-x-auto pb-1.5 max-w-full">
                 <span className="text-[11px] font-bold text-slate-400 mr-1 shrink-0">Filter:</span>
                 {["SEMUA", "Sistem Hidrolik", "Spreader & Twistlock", "Hoist & Motor", "Sistem Elektrikal / Genset", "Gantry & Ban"].map((kat) => (
@@ -877,7 +980,7 @@ export default function DashboardPage() {
                 ))}
               </div>
 
-              {/* TABEL LAPORAN */}
+              {/* Tabel Data */}
               <div className="overflow-x-auto max-h-[380px] overflow-y-auto border border-slate-100 rounded-lg">
                 <table className="w-full text-left text-xs relative min-w-[500px] sm:min-w-full">
                   <thead className="sticky top-0 bg-slate-100 text-slate-600 font-bold z-10 shadow-sm">
@@ -1128,6 +1231,292 @@ export default function DashboardPage() {
                 className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-semibold hover:bg-slate-200 cursor-pointer"
               >
                 Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL USER MANAGEMENT (RBAC) WITH EMPLOYEE_ID */}
+      {showUserManagementModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-5">
+            <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+              <div className="flex items-center space-x-2.5">
+                <div className="p-2.5 bg-emerald-50 text-[#0b3c3c] rounded-xl">
+                  <Shield size={22} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-base text-slate-800">Kelola User Role & Tambah User Baru</h3>
+                  <p className="text-xs text-slate-400">Tambahkan akun baru dan kelompokkan pengguna berdasarkan Role Hak Akses.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowUserManagementModal(false)}
+                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer"
+              >
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* FORM INPUT TERMASUK EMPLOYEE ID */}
+            <form onSubmit={handleCreateUser} className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
+              <h4 className="text-xs font-bold text-slate-700 flex items-center space-x-1.5">
+                <UserPlus size={15} className="text-[#0b3c3c]" />
+                <span>Form Pendaftaran Account Baru</span>
+              </h4>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="text-[11px] font-semibold text-slate-600">ID Pegawai (Employee ID) *</label>
+                  <input
+                    type="text"
+                    value={newUserEmployeeId}
+                    onChange={(e) => setNewUserEmployeeId(e.target.value.toUpperCase())}
+                    placeholder="Contoh: ADM002 / OP002 / TEK002 / MCC002"
+                    className="w-full mt-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-bold uppercase text-slate-700 focus:outline-none focus:border-emerald-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-semibold text-slate-600">Nama Lengkap *</label>
+                  <input
+                    type="text"
+                    value={newUserName}
+                    onChange={(e) => setNewUserName(e.target.value)}
+                    placeholder="Contoh: Arya Wisnu"
+                    className="w-full mt-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-emerald-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-semibold text-slate-600">Email User *</label>
+                  <input
+                    type="email"
+                    value={newUserEmail}
+                    onChange={(e) => setNewUserEmail(e.target.value)}
+                    placeholder="user@pelindo.co.id"
+                    className="w-full mt-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-emerald-500"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-semibold text-slate-600">Password *</label>
+                  <input
+                    type="password"
+                    value={newUserPassword}
+                    onChange={(e) => setNewUserPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full mt-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-emerald-500"
+                    required
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="text-[11px] font-semibold text-slate-600">Role Hak Akses *</label>
+                  <select
+                    value={newUserRole}
+                    onChange={(e) => setNewUserRole(e.target.value as any)}
+                    className="w-full mt-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 focus:outline-none focus:border-emerald-500"
+                  >
+                    <option value="admin">ADMIN (Akses Penuh)</option>
+                    <option value="operator">OPERATOR (Form Pelaporan)</option>
+                    <option value="mcc">MCC (Approval Laporan)</option>
+                    <option value="teknisi">TEKNISI (Penanganan Fisik)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-1">
+                <button
+                  type="submit"
+                  disabled={isCreatingUser}
+                  className="px-4 py-2 bg-[#0b3c3c] hover:bg-[#134e4e] text-white font-semibold text-xs rounded-lg transition shadow flex items-center space-x-1.5 cursor-pointer disabled:opacity-50"
+                >
+                  <Key size={14} />
+                  <span>{isCreatingUser ? "Memproses..." : "Buat Akun User"}</span>
+                </button>
+              </div>
+            </form>
+
+            {/* MODAL / FORM EDIT USER */}
+              {editingUser && (
+                <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs z-[110] flex items-center justify-center p-4">
+                  <div className="bg-white rounded-xl max-w-md w-full p-5 shadow-2xl space-y-4">
+                    <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+                      <h4 className="font-bold text-sm text-slate-800">Edit Data User</h4>
+                      <button onClick={() => setEditingUser(null)} className="text-slate-400 hover:text-slate-600">
+                        <X size={18} />
+                      </button>
+                    </div>
+
+                    <form onSubmit={handleSaveUpdate} className="space-y-3 text-xs">
+                      <div>
+                        <label className="font-semibold text-slate-600">ID Pegawai (Employee ID)</label>
+                        <input
+                          type="text"
+                          value={editEmployeeId}
+                          onChange={(e) => setEditEmployeeId(e.target.value.toUpperCase())}
+                          className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-bold uppercase focus:outline-none focus:border-emerald-500"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="font-semibold text-slate-600">Nama Lengkap</label>
+                        <input
+                          type="text"
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500"
+                          required
+                        />
+                      </div>
+
+                      <div>
+                        <label className="font-semibold text-slate-600">Role Akses</label>
+                        <select
+                          value={editRole}
+                          onChange={(e) => setEditRole(e.target.value as any)}
+                          className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-semibold focus:outline-none focus:border-emerald-500"
+                        >
+                          <option value="admin">ADMIN</option>
+                          <option value="operator">OPERATOR</option>
+                          <option value="mcc">MCC</option>
+                          <option value="teknisi">TEKNISI</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="font-semibold text-slate-600">Status Akun</label>
+                        <select
+                          value={editIsActive ? "true" : "false"}
+                          onChange={(e) => setEditIsActive(e.target.value === "true")}
+                          className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-semibold focus:outline-none focus:border-emerald-500"
+                        >
+                          <option value="true">Aktif</option>
+                          <option value="false">Non-Aktif (Nolkan Akses)</option>
+                        </select>
+                      </div>
+
+                      <div className="flex justify-end space-x-2 pt-2">
+                        <button
+                          type="button"
+                          onClick={() => setEditingUser(null)}
+                          className="px-3.5 py-1.5 bg-slate-100 text-slate-600 rounded-lg font-semibold"
+                        >
+                          Batal
+                        </button>
+                        <button
+                          type="submit"
+                          disabled={isUpdating}
+                          className="px-4 py-1.5 bg-[#0b3c3c] text-white rounded-lg font-semibold hover:bg-[#134e4e] transition"
+                        >
+                          {isUpdating ? "Menyimpan..." : "Simpan Perubahan"}
+                        </button>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+              )}
+
+            {/* DAFTAR USER BERDASARKAN ROLE */}
+            <div className="space-y-3 pt-2">
+              <div className="flex items-center justify-between">
+                <h4 className="text-xs font-bold text-slate-700 flex items-center space-x-1.5">
+                  <Users size={15} className="text-slate-500" />
+                  <span>Daftar Pengguna Terdaftar Berdasarkan Role</span>
+                </h4>
+                <span className="text-[10px] bg-slate-100 text-slate-600 font-bold px-2 py-0.5 rounded-full">
+                  Total: {userList.length} User
+                </span>
+              </div>
+
+              <div className="flex space-x-1 bg-slate-100 p-1 rounded-xl">
+                {["admin", "operator", "mcc", "teknisi"].map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setSelectedRoleTab(r)}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-bold uppercase transition ${
+                      selectedRoleTab === r
+                        ? "bg-[#0b3c3c] text-white shadow-sm"
+                        : "text-slate-500 hover:text-slate-800"
+                    }`}
+                  >
+                    {r} ({userList.filter((u) => u.role === r).length})
+                  </button>
+                ))}
+              </div>
+
+              <div className="max-h-56 overflow-y-auto divide-y divide-slate-100 border border-slate-200 rounded-xl">
+                {userList.filter((u) => u.role === selectedRoleTab).length === 0 ? (
+                  <div className="p-4 text-center text-xs text-slate-400 italic">
+                    Belum ada user terdaftar dalam role {selectedRoleTab.toUpperCase()}.
+                  </div>
+                ) : (
+                  userList
+                    .filter((u) => u.role === selectedRoleTab)
+                    .map((usr) => (
+                      <div key={usr.id} className="p-3 flex justify-between items-center hover:bg-slate-50 text-xs">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-700 font-bold flex items-center justify-center text-xs">
+                            {usr.full_name?.charAt(0) || "U"}
+                          </div>
+                          <div>
+                            <div className="flex items-center space-x-2">
+                              <p className="font-bold text-slate-800">{usr.full_name}</p>
+                              <span className="bg-slate-100 text-slate-600 font-mono text-[9px] px-1.5 py-0.2 rounded border border-slate-200">
+                                {usr.employee_id || "NO-ID"}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-slate-400">Role: <span className="uppercase font-semibold">{usr.role}</span></p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center space-x-2">
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            usr.is_active ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-600"
+                          }`}>
+                            {usr.is_active ? "Aktif" : "Non-Aktif"}
+                          </span>
+                          
+                          {/* Tombol Edit Khusus Admin */}
+                          {role === "admin" && (
+                            <button
+                              onClick={() => handleStartEdit(usr)}
+                              className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[11px] font-semibold transition cursor-pointer"
+                            >
+                              Edit
+                            </button>
+                          )}
+
+                          {/* Tombol Hapus Khusus User Non-Aktif (Admin Only) */}
+                          {role === "admin" && !usr.is_active && (
+                            <button
+                              onClick={() => handleDeleteUser(usr.id, usr.full_name)}
+                              className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition cursor-pointer"
+                              title="Hapus Permanen User Non-Aktif"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                )}
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 flex justify-end">
+              <button
+                onClick={() => setShowUserManagementModal(false)}
+                className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-semibold hover:bg-slate-200 cursor-pointer"
+              >
+                Tutup Window
               </button>
             </div>
           </div>
