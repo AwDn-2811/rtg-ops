@@ -21,6 +21,7 @@ import {
   Check,
   Edit3,
   Film,
+  Package,
 } from "lucide-react";
 
 interface MediaItem {
@@ -79,6 +80,7 @@ export default function PenangananTeknisPage() {
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [catatanPerbaikan, setCatatanPerbaikan] = useState("");
+  const [namaSparepart, setNamaSparepart] = useState("");
   const [fileHasilPerbaikan, setFileHasilPerbaikan] = useState<File | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -222,11 +224,13 @@ export default function PenangananTeknisPage() {
           let uiStatus = "MENUNGGU PENANGANAN";
           const woStatus = activeWO?.status?.toUpperCase();
 
-          if (woStatus === "ON_PROGRESS" || woStatus === "IN_PROGRESS" || woStatus === "SEDANG DIKERJAKAN") {
-            uiStatus = "SEDANG DIKERJAKAN";
-          } else if (woStatus === "DONE" || woStatus === "COMPLETED" || woStatus === "SELESAI") {
-            uiStatus = "SELESAI";
-          }
+         if (woStatus === "ON_PROGRESS" || woStatus === "IN_PROGRESS" || woStatus === "SEDANG DIKERJAKAN") {
+              uiStatus = "SEDANG DIKERJAKAN";
+            } else if (woStatus === "WAITING_PACK" || woStatus === "WAITING PACK") { // <-- TAMBAHKAN INI
+              uiStatus = "WAITING PACK";
+            } else if (woStatus === "DONE" || woStatus === "COMPLETED" || woStatus === "SELESAI") {
+              uiStatus = "SELESAI";
+            }
 
           const temuanTeks = item.findings || "";
           let kat = "Kendala Umum";
@@ -346,6 +350,7 @@ export default function PenangananTeknisPage() {
 
   const tiketMenunggu = filteredReports.filter((r) => r.status === "MENUNGGU PENANGANAN");
   const tiketDikerjakan = filteredReports.filter((r) => r.status === "SEDANG DIKERJAKAN");
+  const tiketWaitingPack = filteredReports.filter((r) => r.status === "WAITING PACK"); // <-- TAMBAHKAN INI
   const tiketSelesai = filteredReports.filter((r) => r.status === "SELESAI");
 
   const totalTiketAktif = tiketMenunggu.length + tiketDikerjakan.length;
@@ -394,6 +399,44 @@ export default function PenangananTeknisPage() {
       setIsSubmitting(false);
     }
   };
+
+  // Aksi Baru: Pindahkan Tiket ke WAITING PACK di Supabase
+const handleHoldWaitingPack = async (workOrderId?: string) => {
+  if (!workOrderId) {
+    alert("ID Work Order tidak ditemukan!");
+    return;
+  }
+
+  if (!namaSparepart.trim()) {
+    alert("Masukkan nama sparepart / komponen yang sedang ditunggu!");
+    return;
+  }
+
+  try {
+    setIsSubmitting(true);
+    const { error } = await supabase
+      .from("work_orders")
+      .update({
+        status: "WAITING_PACK",
+        resolution_notes: `[WAITING SPAREPART]: ${namaSparepart.trim()}`,
+      })
+      .eq("id", workOrderId);
+
+    if (error) {
+      alert("Gagal memperbarui status: " + error.message);
+      return;
+    }
+
+    alert("Status perbaikan diubah menjadi WAITING PACK.");
+    setShowDetailModal(false);
+    setNamaSparepart("");
+    loadData();
+  } catch (err) {
+    console.error("Error updating to waiting pack:", err);
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   // Aksi 2: Selesaikan Tiket (Kirim status 'COMPLETED' kapital)
   const handleSelesaikanTiket = async (e: React.FormEvent) => {
@@ -849,7 +892,7 @@ export default function PenangananTeknisPage() {
         </div>
 
         {/* Kanban Board */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           {/* Kolom 1: MENUNGGU PENANGANAN */}
           <div className="bg-slate-200/50 p-4 rounded-xl border border-slate-200 flex flex-col h-[450px] min-h-0">
             <div className="flex items-center justify-between mb-4">
@@ -939,7 +982,63 @@ export default function PenangananTeknisPage() {
             </div>
           </div>
 
-          {/* Kolom 3: SELESAI HARI INI */}
+          {/* Kolom 3: WAITING PACK (BARU) */}
+          <div className="bg-slate-200/50 p-4 rounded-xl border border-slate-200 flex flex-col h-[450px] min-h-0">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
+                <h3 className="font-bold text-xs uppercase tracking-wider text-slate-800">WAITING PACK</h3>
+                <span className="bg-purple-100 text-purple-700 font-bold px-2 py-0.5 rounded-full text-[11px]">
+                  {tiketWaitingPack.length}
+                </span>
+              </div>
+            </div>
+
+            <div className="space-y-3.5 flex-1 min-h-0 overflow-y-auto pr-2 flex flex-col">
+              {tiketWaitingPack.length === 0 ? (
+                <div className="bg-white/80 rounded-xl p-8 text-center text-xs text-slate-400 border border-dashed border-slate-300 my-auto flex flex-col items-center justify-center">
+                  <Package className="mb-2 text-slate-300" size={28} />
+                  <span>Tidak ada unit tertunda sparepart.</span>
+                </div>
+              ) : (
+                tiketWaitingPack.map((item) => (
+                  <div key={item.id} className="bg-white rounded-xl p-4 shadow-sm border border-purple-200 space-y-3">
+                    <div className="flex justify-between items-start">
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded bg-purple-100 text-purple-800">
+                        HOLD SPAREPART
+                      </span>
+                      <span className="text-[11px] text-slate-500 font-medium">⏱ {item.jam}</span>
+                    </div>
+
+                    <div>
+                      <span className="font-extrabold text-sm text-slate-900 block">{item.rtg}</span>
+                      <h4 className="font-bold text-xs text-slate-800 mt-0.5">{item.kategori}</h4>
+                    </div>
+
+                    <div className="bg-purple-50 p-2.5 rounded-lg border border-purple-100 text-[11px] text-purple-900">
+                      <span className="text-[10px] font-bold text-purple-700 block uppercase">Menunggu:</span>
+                      <p className="font-medium mt-0.5">{item.resolutionNotes || "Komponen Sparepart"}</p>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-1 border-t border-slate-100">
+                      <span className="text-[10px] text-slate-500">📍 {item.lokasi}</span>
+                      <button
+                        onClick={() => {
+                          setSelectedReport(item);
+                          setShowDetailModal(true);
+                        }}
+                        className="px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-lg text-xs font-semibold transition cursor-pointer"
+                      >
+                        Update / Selesai ➔
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+
+          {/* Kolom 4: SELESAI HARI INI */}
           <div className="bg-slate-200/50 p-4 rounded-xl border border-slate-200 flex flex-col h-[450px] min-h-0">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-2">
@@ -1065,6 +1164,20 @@ export default function PenangananTeknisPage() {
                 )}
               </div>
 
+              {/* Input Tambahan untuk Waiting Pack */}
+              <div>
+                <label className="font-bold text-slate-700 flex items-center space-x-1 mb-1">
+                  <Package size={14} className="text-purple-600" />
+                  <span>Nama Sparepart yang Ditunggu (Isi jika memindahkan ke Waiting Pack):</span>
+                </label>
+                <input
+                  type="text"
+                  value={namaSparepart}
+                  onChange={(e) => setNamaSparepart(e.target.value)}
+                  placeholder="Contoh: Seal Kit Hoist Cylinder / Twistlock Sensor..."
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-purple-500"
+                />
+              </div>
               {/* FORM HANYA TAMPIL JIKA STATUS BELUM SELESAI */}
               {selectedReport.status !== "SELESAI" ? (
                 <form onSubmit={handleSelesaikanTiket} className="pt-2 border-t border-slate-100 space-y-3">
@@ -1094,6 +1207,16 @@ export default function PenangananTeknisPage() {
                     <button type="button" onClick={() => setShowDetailModal(false)} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg font-semibold hover:bg-slate-200 cursor-pointer">
                       Batal
                     </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleHoldWaitingPack(selectedReport.workOrderId)}
+                      disabled={isSubmitting}
+                      className="px-3.5 py-2 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 transition cursor-pointer disabled:opacity-50"
+                    >
+                      Hold (Waiting Pack)
+                    </button>
+
                     <button type="submit" disabled={isSubmitting} className="px-4 py-2 bg-amber-600 text-white rounded-lg font-semibold hover:bg-amber-700 transition cursor-pointer disabled:opacity-50">
                       {isSubmitting ? "Menyimpan..." : "Tandai Perbaikan Selesai"}
                     </button>

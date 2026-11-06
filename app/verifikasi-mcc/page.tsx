@@ -253,7 +253,6 @@ export default function ApprovalMCCPage() {
             kat = "Gantry & Ban";
           }
 
-          // FIX MANDATORY: PARSING PRIORITY DARI DATABASE SECARA PRESISI
           let formattedPriority = "";
           if (item.priority !== null && item.priority !== undefined) {
             const rawP = String(item.priority).trim();
@@ -389,17 +388,17 @@ export default function ApprovalMCCPage() {
       .map((r) => r.teknisi)
   ).size;
 
-  // FIX HANDLER APPROVE DENGAN KONVERSI ANGKA PASTI
-  const handleApproveReport = async (reportId: string, priorityValue: string, technicianId: string) => {
-    const prioStr = priorityValue || selectedPriority;
+  // HANDLER APPROVE DENGAN STRUKTUR DIBENARKAN
+  const handleApproveReport = async (reportId: string, priority: string, technicianId: string) => {
+    const prioStr = priority || selectedPriority;
 
-    if (!prioStr) {
+    if (!priority) {
       alert("Pilih prioritas laporan terlebih dahulu.");
       return;
     }
 
     if (!technicianId) {
-      alert("Pilih teknisi yang tersedia terlebih dahulu.");
+      alert("Pilih teknisi yang ditugaskan.");
       return;
     }
 
@@ -408,7 +407,6 @@ export default function ApprovalMCCPage() {
       return;
     }
 
-    // Tentukan angka prioritas secara pasti (1, 2, atau 3)
     let priorityNum = 3;
     if (prioStr.includes("1")) priorityNum = 1;
     else if (prioStr.includes("2")) priorityNum = 2;
@@ -422,7 +420,7 @@ export default function ApprovalMCCPage() {
         .from("rtg_reports")
         .update({
           verification_status: "APPROVED",
-          priority: priorityNum, // Menyimpan angka 1, 2, atau 3 murni
+          priority: priorityNum,
           mcc_id: currentUserId,
           verified_at: new Date().toISOString(),
         })
@@ -437,19 +435,42 @@ export default function ApprovalMCCPage() {
 
       console.log("Hasil Update rtg_reports:", updateData);
 
-      // 2. INSERT TIKET KE TABLE work_orders
-      const { error: insertWOError } = await supabase
+      // 2. CEK DAN UPSERT WORK ORDER
+    // 2. CEK DAN UPSERT WORK ORDER
+      const { data: existingWO } = await supabase
         .from("work_orders")
-        .insert({
-          report_id: reportId,
-          technician_id: technicianId,
-          assigned_by: currentUserId,
-          status: "ASSIGNED",
-        });
+        .select("id")
+        .eq("report_id", reportId)
+        .maybeSingle();
 
-      if (insertWOError) {
-        console.error("Error Insert work_orders:", insertWOError);
-        alert("Status Laporan berhasil di-update ke DB, tapi gagal membuat Work Order: " + insertWOError.message);
+      if (existingWO) {
+        const { error: woUpdateError } = await supabase
+          .from("work_orders")
+          .update({
+            technician_id: technicianId,
+            assigned_by: currentUserId, // <-- TAMBAHKAN BARIS INI
+            status: "ASSIGNED",
+          })
+          .eq("id", existingWO.id);
+
+        if (woUpdateError) {
+          alert("Gagal memperbarui Work Order: " + woUpdateError.message);
+          return;
+        }
+      } else {
+        const { error: woInsertError } = await supabase
+          .from("work_orders")
+          .insert({
+            report_id: reportId,
+            technician_id: technicianId,
+            assigned_by: currentUserId, // <-- TAMBAHKAN BARIS INI (PENYEBAB ERROR)
+            status: "ASSIGNED",
+          });
+
+        if (woInsertError) {
+          alert("Gagal membuat Work Order: " + woInsertError.message);
+          return;
+        }
       }
 
       // 3. UPDATE STATUS UNIT RTG
@@ -472,9 +493,10 @@ export default function ApprovalMCCPage() {
       
       // Refresh Data UI
       await loadData();
-    } catch (err: any) {
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
       console.error("Error approving report:", err);
-      alert("Terjadi kesalahan sistem: " + err.message);
+      alert("Terjadi kesalahan sistem: " + errorMessage);
     }
   };
 
@@ -504,7 +526,7 @@ export default function ApprovalMCCPage() {
       setSelectedReport(null);
       setShowDetailModal(false);
       setAlasanPenolakan("");
-      loadData();
+      await loadData();
     } catch (err) {
       console.error("Error rejecting report:", err);
     }
@@ -554,7 +576,7 @@ export default function ApprovalMCCPage() {
           </div>
         </div>
 
-        {/* Navigasi Desktop (Disembunyikan di HP, tampil di Desktop) */}
+        {/* Navigasi Desktop */}
         <nav className="hidden lg:flex items-center space-x-2 bg-[#082e2e] p-1.5 rounded-full text-xs shadow-inner">
           {(role === "admin" || role === "operator") && (
             <Link href="/form-pelaporan" className={`px-5 py-2 rounded-full transition font-semibold ${pathname === "/form-pelaporan" ? "bg-white text-[#0b3c3c] shadow" : "text-slate-300 hover:text-white"}`}>Form Pelaporan</Link>
@@ -750,7 +772,6 @@ export default function ApprovalMCCPage() {
               <RefreshCw size={14} />
               <span>Refresh Data</span>
             </button>
-
           </div>
         </div>
 
@@ -792,7 +813,6 @@ export default function ApprovalMCCPage() {
         {/* Filter Bar */}
         <div className="bg-white p-3 rounded-xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-3 justify-between items-center">
           <div className="relative flex-1 w-full">
-
             <Search className="absolute left-3 top-2.5 text-slate-400" size={15} />
             <input type="text" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Cari laporan, nomor RTG, atau pelapor..." className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-emerald-500" />
           </div>
@@ -889,7 +909,7 @@ export default function ApprovalMCCPage() {
                 tiketDikerjakan.map((item) => (
                   <div key={item.id} className="bg-white rounded-xl p-4 shadow-sm border border-slate-200 space-y-3">
                     <div className="flex justify-between items-start">
-                      <span className="text-[10px] font-black px-2 py-0.5 rounded bg-blue-100 text-blue-800">{item.prioritas || "P3"} • AKTIF</span>
+                      <span className="text-[10px] font-black px-2 py-0.5 rounded bg-blue-100 text-blue-800">{item.prioritas || "P3"} AKTIF</span>
                       <div className="text-right">
                         <span className="text-[11px] text-slate-500 font-medium">⏱ {item.jam}</span>
                         <div className="bg-blue-100 text-blue-800 font-bold text-[10px] px-2 py-0.5 rounded mt-1">{item.lokasi}</div>
@@ -905,7 +925,6 @@ export default function ApprovalMCCPage() {
                       <div className="font-bold text-slate-800"><span>{item.teknisi || "Belum Ditugaskan"}</span></div>
                     </div>
                     <div className="flex items-center justify-between pt-1">
-                      {/* FIX DI SINI: Menyimpan data prioritas item secara aman saat klik Lihat Detail */}
                       <button onClick={() => { setSelectedReport(item); setSelectedPriority(item.prioritas || "P3"); setShowDetailModal(true); }} className="px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 rounded-lg text-xs font-semibold transition flex items-center space-x-1 cursor-pointer">
                         <Edit3 size={13} /><span>Lihat Detail</span>
                       </button>
@@ -924,7 +943,7 @@ export default function ApprovalMCCPage() {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                <h3 className="font-bold text-xs uppercase tracking-wider text-slate-800">DITOLAK / SELESAI</h3>
+                <h3 className="font-bold text-xs uppercase tracking-wider text-slate-800">DITOLAK / SELESAI / DITERUSKAN KE PIHAK TERKAIT</h3>
                 <span className="bg-emerald-100 text-emerald-700 font-bold px-2 py-0.5 rounded-full text-[11px]">{tiketSelesai.length}</span>
               </div>
             </div>
@@ -987,7 +1006,6 @@ export default function ApprovalMCCPage() {
                   <p className="font-bold text-slate-700">{selectedReport.lokasi}</p>
                 </div>
                 <div>
-
                   <label htmlFor="mcc-priority" className="text-slate-400 block mb-1">Prioritas MCC:</label>
                   {selectedReport.status === "MENUNGGU VERIFIKASI MCC" ? (
                     <select id="mcc-priority" value={selectedPriority} onChange={(e) => setSelectedPriority(e.target.value)} className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs font-bold text-slate-700 focus:outline-none focus:border-emerald-500">
@@ -997,14 +1015,12 @@ export default function ApprovalMCCPage() {
                       <option value="P3">Priority 3 (P3)</option>
                     </select>
                   ) : (
-                    /* FIX MEMBACA PRIORITAS YANG AKURAT DARI ITEM/STATE */
                     <p className={`font-bold ${(selectedReport.prioritas || selectedPriority) === "P1" ? "text-red-600" : (selectedReport.prioritas || selectedPriority) === "P2" ? "text-amber-600" : "text-slate-700"}`}>
                       {selectedReport.prioritas || selectedPriority || "P3"}
                     </p>
                   )}
                 </div>
                 <div>
-
                   <label htmlFor="mcc-technician" className="text-slate-400 block mb-1">Teknisi Ditugaskan:</label>
                   {selectedReport.status === "MENUNGGU VERIFIKASI MCC" ? (
                     <select id="mcc-technician" value={selectedTeknisiId} onChange={(e) => setSelectedTeknisiId(e.target.value)} className="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs font-bold text-slate-700 focus:outline-none focus:border-emerald-500">
@@ -1040,7 +1056,6 @@ export default function ApprovalMCCPage() {
                       : "0 Berkas"}
                   </span>
                 </p>
-
 
                 {selectedReport.lampiranMedia && selectedReport.lampiranMedia.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -1079,8 +1094,7 @@ export default function ApprovalMCCPage() {
                       </div>
                     ))}
                   </div>
-                ) : 
-                (
+                ) : (
                   <div className="bg-slate-50 p-3 rounded-lg border border-dashed border-slate-200 text-center text-slate-400 text-xs">
                     <Camera size={18} className="mx-auto mb-1 text-slate-300" />
                     <span>Pelapor tidak menyertakan foto/video bukti kerusakan.</span>
