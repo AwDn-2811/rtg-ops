@@ -191,7 +191,7 @@ export default function AuditLogPage() {
               pathname === "/dasboard" ? "bg-white text-[#0b3c3c] shadow" : "text-slate-300 hover:text-white"
             }`}
           >
-            Dashboard Monitoring
+            Dasboard Monitoring
           </Link>
 
           {(role === "admin" || role === "mcc") && (
@@ -244,7 +244,7 @@ export default function AuditLogPage() {
       {/* Mobile Menu Dropdown */}
       {mobileMenuOpen && (
         <div className="lg:hidden bg-[#082e2e] text-white px-4 py-3 border-b border-emerald-800/40 space-y-2 shadow-lg">
-          <Link href="/dasboard" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-2 rounded-lg text-xs font-semibold text-slate-200">Dashboard Monitoring</Link>
+          <Link href="/dasboard" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-2 rounded-lg text-xs font-semibold text-slate-200">Dasboard Monitoring</Link>
           <Link href="/verifikasi-mcc" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-2 rounded-lg text-xs font-semibold text-slate-200">Approval MCC</Link>
           <Link href="/penanganan-teknis" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-2 rounded-lg text-xs font-semibold text-slate-200">Penanganan Teknisi</Link>
           <Link href="/audit-log" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-2 rounded-lg text-xs font-semibold bg-white text-[#0b3c3c]">Audit Log</Link>
@@ -296,7 +296,7 @@ export default function AuditLogPage() {
               <option value="SEMUA">Semua Jenis Aksi</option>
               <option value="MCC_APPROVE">MCC Approve</option>
               <option value="MCC_REJECT">MCC Reject</option>
-              <option value="HOLD_WAITING_PACK">Hold Waiting Pack</option>
+              <option value="HOLD_WAITING_PART">Hold Waiting Part</option>
               <option value="COMPLETE_REPAIR">Perbaikan Selesai</option>
             </select>
           </div>
@@ -351,7 +351,7 @@ export default function AuditLogPage() {
                               ? "bg-emerald-100 text-emerald-700"
                               : log.action === "MCC_REJECT"
                               ? "bg-red-100 text-red-700"
-                              : log.action === "HOLD_WAITING_PACK"
+                              : log.action === "HOLD_WAITING_PART"
                               ? "bg-purple-100 text-purple-700"
                               : "bg-blue-100 text-blue-700"
                           }`}

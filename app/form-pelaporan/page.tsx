@@ -644,66 +644,7 @@ export default function FormPelaporanPage() {
         </div>
       </header>
 
-      {/* DROPDOWN HAMBURGER MENU (KHUSUS MOBILE) */}
-      {mobileMenuOpen && (
-        <div className="lg:hidden bg-[#082e2e] text-white px-4 py-3 border-b border-emerald-800/40 space-y-2 shadow-lg animate-in slide-in-from-top duration-200">
-          {(role === "admin" || role === "operator") && (
-            <Link
-              href="/form-pelaporan"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
-                pathname === "/form-pelaporan"
-                  ? "bg-white text-[#0b3c3c]"
-                  : "text-slate-200 hover:bg-[#104848]"
-              }`}
-            >
-              Form Pelaporan
-            </Link>
-          )}
-
-          {(role === "admin" || role === "mcc") && (
-            <Link
-              href="/verifikasi-mcc"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
-                pathname === "/verifikasi-mcc"
-                  ? "bg-white text-[#0b3c3c]"
-                  : "text-slate-200 hover:bg-[#104848]"
-              }`}
-            >
-              Approval MCC
-            </Link>
-          )}
-
-          {(role === "admin" || role === "mcc" || role === "teknisi") && (
-            <Link
-              href="/dasboard"
-              className={`px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-full transition font-semibold whitespace-nowrap ${
-                pathname === "/dasboard"
-                  ? "bg-white text-[#0b3c3c] shadow"
-                  : "text-slate-300 hover:text-white"
-              }`}
-            >
-              Dashboard
-            </Link>
-          )}
-
-          {(role === "admin" || role === "teknisi") && (
-            <Link
-              href="/penanganan-teknis"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
-                pathname === "/penanganan-teknis"
-                  ? "bg-white text-[#0b3c3c]"
-                  : "text-slate-200 hover:bg-[#104848]"
-              }`}
-            >
-              Penanganan Teknisi
-            </Link>
-          )}
-        </div>
-      )}
-
+     
       {/* Main Form */}
       <main className="max-w-5xl mx-auto mt-6 px-4">
         <div className="bg-white rounded-2xl p-4 sm:p-8 border border-slate-200 shadow-sm space-y-6">

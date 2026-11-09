@@ -4,7 +4,7 @@ interface LogParams {
   userId?: string | null;
   userName?: string | null;
   userRole?: string | null;
-  action: "CREATE_REPORT" | "MCC_APPROVE" | "MCC_REJECT" | "START_REPAIR" | "HOLD_WAITING_PACK" | "COMPLETE_REPAIR";
+  action: "CREATE_REPORT" | "MCC_APPROVE" | "MCC_REJECT" | "START_REPAIR" | "HOLD_WAITING_PART" | "COMPLETE_REPAIR";
   description: string;
   targetId?: string;
 }
@@ -36,4 +36,6 @@ export async function createAuditLog({
   } catch (err) {
     console.error("Error pada audit logger:", err);
   }
+
+  
 }

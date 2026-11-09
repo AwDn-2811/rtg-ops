@@ -69,7 +69,7 @@ interface UserProfile {
   is_active: boolean;
 }
 
-export default function DashboardPage() {
+export default function DasboardPage() {
   const router = useRouter();
   const pathname = usePathname();
   const [reports, setReports] = useState<Report[]>([]);
@@ -200,7 +200,6 @@ export default function DashboardPage() {
 
     setIsCreatingUser(true);
     try {
-      // Cukup signUp dengan menyertakan metadata. Trigger PostgreSQL akan otomatis mengisi tabel profiles!
       const { data, error } = await supabase.auth.signUp({
         email: newUserEmail,
         password: newUserPassword,
@@ -222,7 +221,6 @@ export default function DashboardPage() {
         setNewUserName("");
         setNewUserEmployeeId("");
         
-        // Beri sedikit jeda waktu agar trigger selesai memasukkan data sebelum memuat ulang tabel
         setTimeout(() => {
           fetchUserProfiles();
         }, 500);
@@ -234,7 +232,6 @@ export default function DashboardPage() {
     }
   };
 
-  // Handler untuk membuka modal/form edit
   const handleStartEdit = (user: UserProfile) => {
     setEditingUser(user);
     setEditName(user.full_name);
@@ -243,7 +240,6 @@ export default function DashboardPage() {
     setEditIsActive(user.is_active);
   };
 
-  // Handler untuk simpan perubahan (UPDATE ke Supabase)
   const handleSaveUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingUser) return;
@@ -294,7 +290,6 @@ export default function DashboardPage() {
     }
   };
 
-  // Realtime Supabase Status RTG
   useEffect(() => {
     let isMounted = true;
 
@@ -339,7 +334,6 @@ export default function DashboardPage() {
     };
   }, [supabase]);
 
-  // Modal Detail Tiket Tabel
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
 
@@ -354,7 +348,6 @@ export default function DashboardPage() {
     }
   }, []);
 
-  // Filter Laporan
   const filteredReports = reports.filter((r) => {
     const matchesSearch =
       r.rtg.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -368,7 +361,6 @@ export default function DashboardPage() {
     return matchesSearch && matchesKategori;
   });
 
-  // Pemetaan Card RTG Units
   const rtgUnits = rtgStatuses.map((item) => {
     const activeReport = reports.find(
       (r) => r.rtg.toUpperCase() === item.unit_code.toUpperCase()
@@ -395,7 +387,6 @@ export default function DashboardPage() {
     setShowRtgModal(true);
   };
 
-  // Kalkulasi Data Grafik
   const rtgCounts: Record<string, number> = {};
   reports.forEach((r) => {
     rtgCounts[r.rtg] = (rtgCounts[r.rtg] || 0) + 1;
@@ -583,14 +574,14 @@ export default function DashboardPage() {
 
           {(role === "admin" || role === "mcc" || role === "teknisi") && (
             <Link
-              href="/dasboard"
+              href="/dashboard"
               className={`px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-full transition font-semibold whitespace-nowrap ${
-                pathname === "/dasboard"
+                pathname === "/dashboard"
                   ? "bg-white text-[#0b3c3c] shadow"
                   : "text-slate-300 hover:text-white"
               }`}
             >
-              Dashboard
+              Dasboard
             </Link>
           )}
 
@@ -739,6 +730,7 @@ export default function DashboardPage() {
         </div>
       </header>
 
+    
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 mt-4 sm:mt-6 space-y-4 sm:space-y-6">
         {/* Banner Utama */}
@@ -838,7 +830,7 @@ export default function DashboardPage() {
                     ? item.prioritas?.includes("P1")
                       ? "bg-red-100 border-red-500 text-red-900 animate-pulse"
                       : "bg-amber-50 border-amber-300 text-amber-900 hover:border-amber-400"
-                    : "bg-slate-50 border-slate-200 hover:border-emerald-400 hover:bg-emerald-50/30"
+                  : "bg-slate-50 border-slate-200 hover:border-emerald-400 hover:bg-emerald-50/30"
                 }`}
               >
                 <div className="flex justify-between items-start">
@@ -1489,39 +1481,37 @@ export default function DashboardPage() {
                               </span>
                             </div>
                             <p className="text-[10px] text-slate-400">Role: <span className="uppercase font-semibold">{usr.role}</span></p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center space-x-2">
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                            usr.is_active ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-600"
-                          }`}>
-                            {usr.is_active ? "Aktif" : "Non-Aktif"}
-                          </span>
-                          
-                          {/* Tombol Edit Khusus Admin */}
-                          {role === "admin" && (
-                            <button
-                              onClick={() => handleStartEdit(usr)}
-                              className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[11px] font-semibold transition cursor-pointer"
-                            >
-                              Edit
-                            </button>
-                          )}
-
-                          {/* Tombol Hapus Khusus User Non-Aktif (Admin Only) */}
-                          {role === "admin" && !usr.is_active && (
-                            <button
-                              onClick={() => handleDeleteUser(usr.id, usr.full_name)}
-                              className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition cursor-pointer"
-                              title="Hapus Permanen User Non-Aktif"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          )}
                         </div>
                       </div>
-                    ))
+
+                      <div className="flex items-center space-x-2">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          usr.is_active ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-600"
+                        }`}>
+                          {usr.is_active ? "Aktif" : "Non-Aktif"}
+                        </span>
+                        
+                        {role === "admin" && (
+                          <button
+                            onClick={() => handleStartEdit(usr)}
+                            className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[11px] font-semibold transition cursor-pointer"
+                          >
+                            Edit
+                          </button>
+                        )}
+
+                        {role === "admin" && !usr.is_active && (
+                          <button
+                            onClick={() => handleDeleteUser(usr.id, usr.full_name)}
+                            className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition cursor-pointer"
+                            title="Hapus Permanen User Non-Aktif"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))
                 )}
               </div>
             </div>

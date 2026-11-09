@@ -1,3 +1,4 @@
+
 export type UserRole =
   | "admin"
   | "operator"
@@ -12,23 +13,28 @@ export type MenuItem = {
 
 export const navigationMenus: MenuItem[] = [
   {
-    label: "Dashboard",
-    href: "/dasboard",
-    roles: ["admin", "operator", "mcc", "teknisi"],
-  },
-  {
     label: "Form Pelaporan",
     href: "/form-pelaporan",
     roles: ["admin", "operator"],
   },
   {
-    label: "Verifikasi MCC",
+    label: "Approval MCC",
     href: "/verifikasi-mcc",
     roles: ["admin", "mcc"],
   },
   {
-    label: "Work Orders",
+    label: "Dashboard Monitoring",
+    href: "/dashboard",
+    roles: ["admin", "mcc", "teknisi"],
+  },
+  {
+    label: "Penanganan Teknisi",
     href: "/penanganan-teknis",
     roles: ["admin", "teknisi"],
+  },
+  {
+    label: "Audit Log",
+    href: "/audit-log",
+    roles: ["admin", "mcc"],
   },
 ];
