@@ -227,8 +227,8 @@ export default function PenangananTeknisPage() {
 
          if (woStatus === "ON_PROGRESS" || woStatus === "IN_PROGRESS" || woStatus === "SEDANG DIKERJAKAN") {
               uiStatus = "SEDANG DIKERJAKAN";
-            } else if (woStatus === "WAITING_PACK" || woStatus === "WAITING PACK") { // <-- TAMBAHKAN INI
-              uiStatus = "WAITING PACK";
+            } else if (woStatus === "WAITING_PART" || woStatus === "WAITING PM") {
+              uiStatus = "WAITING PART";
             } else if (woStatus === "DONE" || woStatus === "COMPLETED" || woStatus === "SELESAI") {
               uiStatus = "SELESAI";
             }
@@ -351,7 +351,7 @@ export default function PenangananTeknisPage() {
 
   const tiketMenunggu = filteredReports.filter((r) => r.status === "MENUNGGU PENANGANAN");
   const tiketDikerjakan = filteredReports.filter((r) => r.status === "SEDANG DIKERJAKAN");
-  const tiketWaitingPack = filteredReports.filter((r) => r.status === "WAITING PACK"); // <-- TAMBAHKAN INI
+  const tiketWaitingPack = filteredReports.filter((r) => r.status === "WAITING PART");
   const tiketSelesai = filteredReports.filter((r) => r.status === "SELESAI");
 
   const totalTiketAktif = tiketMenunggu.length + tiketDikerjakan.length;
@@ -427,7 +427,7 @@ const handleHoldWaitingPack = async (workOrderId?: string) => {
     const { error } = await supabase
       .from("work_orders")
       .update({
-        status: "WAITING_PACK",
+        status: "WAITING_PART",
         resolution_notes: `[WAITING SPAREPART]: ${namaSparepart.trim()}`,
       })
       .eq("id", workOrderId);
@@ -437,12 +437,12 @@ const handleHoldWaitingPack = async (workOrderId?: string) => {
       return;
     }
 
-    alert("Status perbaikan diubah menjadi WAITING PACK.");
+    alert("Status perbaikan diubah menjadi WAITING PART.");
     setShowDetailModal(false);
     setNamaSparepart("");
     loadData();
   } catch (err) {
-    console.error("Error updating to waiting pack:", err);
+    console.error("Error updating to waiting part:", err);
   } finally {
     setIsSubmitting(false);
   }
@@ -603,7 +603,7 @@ const handleHoldWaitingPack = async (workOrderId?: string) => {
                 : "text-slate-300 hover:text-white"
             }`}
           >
-            Dashboard Monitoring
+            Dashboard
           </Link>
 
           {(role === "admin" || role === "teknisi") && (
@@ -1011,7 +1011,7 @@ const handleHoldWaitingPack = async (workOrderId?: string) => {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
-                <h3 className="font-bold text-xs uppercase tracking-wider text-slate-800">WAITING PACK</h3>
+                <h3 className="font-bold text-xs uppercase tracking-wider text-slate-800">WAITING PACK / PM</h3>
                 <span className="bg-purple-100 text-purple-700 font-bold px-2 py-0.5 rounded-full text-[11px]">
                   {tiketWaitingPack.length}
                 </span>

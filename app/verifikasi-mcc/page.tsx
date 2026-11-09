@@ -230,7 +230,12 @@ export default function ApprovalMCCPage() {
           const woStatus = activeWO?.status?.toUpperCase();
 
           if (dbStatus === "APPROVED" || activeWO) {
-            if (woStatus === "COMPLETED" || woStatus === "SELESAI" || woStatus === "DONE") {
+            // Pemetaan dinamis mengikuti status Work Order dari Teknisi
+            if (woStatus === "ON_PROGRESS" || woStatus === "IN_PROGRESS") {
+              uiStatus = "SEDANG DIKERJAKAN";
+            } else if (woStatus === "WAITING_PART" || woStatus === "WAITING PART") {
+              uiStatus = "WAITING PART / PM";
+            } else if (woStatus === "COMPLETED" || woStatus === "SELESAI" || woStatus === "DONE") {
               uiStatus = "SELESAI";
             } else {
               uiStatus = "MENUNGGU PENANGANAN";
@@ -370,6 +375,7 @@ export default function ApprovalMCCPage() {
     (r) =>
       r.status === "MENUNGGU PENANGANAN" ||
       r.status === "SEDANG DIKERJAKAN" ||
+      r.status === "WAITING PART / PM" ||
       r.status === "APPROVED"
   );
 
@@ -593,7 +599,7 @@ export default function ApprovalMCCPage() {
           {(role === "admin" || role === "mcc") && (
             <Link href="/verifikasi-mcc" className={`px-5 py-2 rounded-full transition font-semibold ${pathname === "/verifikasi-mcc" ? "bg-white text-[#0b3c3c] shadow" : "text-slate-300 hover:text-white"}`}>Approval MCC</Link>
           )}
-          <Link href="/dasboard" className={`px-5 py-2 rounded-full transition font-semibold ${pathname === "/dasboard" ? "bg-white text-[#0b3c3c] shadow" : "text-slate-300 hover:text-white"}`}>Dashboard Monitoring</Link>
+          <Link href="/dasboard" className={`px-5 py-2 rounded-full transition font-semibold ${pathname === "/dasboard" ? "bg-white text-[#0b3c3c] shadow" : "text-slate-300 hover:text-white"}`}>Dashboard</Link>
           {(role === "admin" || role === "teknisi") && (
             <Link href="/penanganan-teknis" className={`px-5 py-2 rounded-full transition font-semibold ${pathname === "/penanganan-teknis" ? "bg-white text-[#0b3c3c] shadow" : "text-slate-300 hover:text-white"}`}>Penanganan Teknisi</Link>
           )}
@@ -746,7 +752,7 @@ export default function ApprovalMCCPage() {
                 : "text-slate-200 hover:bg-[#104848]"
             }`}
           >
-            Dashboard Monitoring
+            Dashboard
           </Link>
 
           {(role === "admin" || role === "teknisi") && (
@@ -1161,9 +1167,28 @@ export default function ApprovalMCCPage() {
                   </div>
                 </div>
               ) : (
-                <div className="pt-2 border-t border-slate-100 text-xs text-slate-600 space-y-1">
-                  <p><strong>Status Tiket:</strong> {selectedReport.status}</p>
-                  {selectedReport.ticketId && <p><strong>Nomor Ticket:</strong> {selectedReport.ticketId}</p>}
+                // KODE MODAL DETAIL
+                <div className="pt-2 border-t border-slate-100 text-xs text-slate-600 space-y-1.5">
+                  <div className="flex items-center space-x-2">
+                    <strong>Status Tiket:</strong>
+                    <span className={`px-2.5 py-0.5 rounded-full font-extrabold text-[10px] ${
+                      selectedReport.status === "SEDANG DIKERJAKAN"
+                        ? "bg-blue-100 text-blue-800 border border-blue-200"
+                        : selectedReport.status === "WAITING PART / PM"
+                        ? "bg-purple-100 text-purple-800 border border-purple-200"
+                        : selectedReport.status === "SELESAI"
+                        ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                        : selectedReport.status === "DITOLAK MCC"
+                        ? "bg-red-100 text-red-800 border border-red-200"
+                        : "bg-amber-100 text-amber-800 border border-amber-200"
+                    }`}>
+                      {selectedReport.status}
+                    </span>
+                  </div>
+
+                  {selectedReport.ticketId && (
+                    <p><strong>Nomor Ticket:</strong> {selectedReport.ticketId}</p>
+                  )}
                 </div>
               )}
             </div>

@@ -185,15 +185,20 @@ export default function AuditLogPage() {
 
         {/* Navigasi Desktop */}
         <nav className="hidden lg:flex items-center space-x-2 bg-[#082e2e] p-1.5 rounded-full text-xs shadow-inner">
-          <Link
-            href="/dasboard"
-            className={`px-5 py-2 rounded-full transition font-semibold ${
-              pathname === "/dasboard" ? "bg-white text-[#0b3c3c] shadow" : "text-slate-300 hover:text-white"
-            }`}
-          >
-            Dashboard Monitoring
-          </Link>
 
+          {(role === "admin" || role === "operator") && (
+            <Link
+              href="/form-pelaporan"
+              className={`px-5 py-2 rounded-full transition font-semibold ${
+                pathname === "/form-pelaporan"
+                  ? "bg-white text-[#0b3c3c] shadow"
+                  : "text-slate-300 hover:text-white"
+              }`}
+            >
+              Form Pelaporan
+            </Link>
+          )}
+          
           {(role === "admin" || role === "mcc") && (
             <Link
               href="/verifikasi-mcc"
@@ -204,6 +209,15 @@ export default function AuditLogPage() {
               Approval MCC
             </Link>
           )}
+
+          <Link
+            href="/dasboard"
+            className={`px-5 py-2 rounded-full transition font-semibold ${
+              pathname === "/dasboard" ? "bg-white text-[#0b3c3c] shadow" : "text-slate-300 hover:text-white"
+            }`}
+          >
+            Dashboard
+          </Link>
 
           {(role === "admin" || role === "teknisi") && (
             <Link

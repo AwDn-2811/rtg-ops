@@ -25,11 +25,12 @@ import {
   UserPlus,
   Users,
   Shield,
-  Key
+  Key,
+  Package
 } from "lucide-react";
 
 interface Report {
-  id: number;
+  id: number | string;
   tanggal: string;
   jam: string;
   rtg: string;
@@ -49,11 +50,12 @@ interface RTGStatus {
   status: string;
   block: string | null;
   last_updated: string;
+  activeReport?: any;
 }
 
 interface RTGCardItem {
   id: string;
-  status: "NORMAL" | "PERBAIKAN";
+  status: "NORMAL" | "PENDING_MCC" | "ON_PROGRESS" | "WAITING_PART";
   prioritas?: string;
   sub: string;
   block?: string | null;
@@ -74,16 +76,21 @@ export default function DashboardPage() {
   const pathname = usePathname();
   const [reports, setReports] = useState<Report[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedKategoriFilter, setSelectedKategoriFilter] = useState("SEMUA");
   const [showNotif, setShowNotif] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
 
   // State Hamburger Menu Mobile
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  // State RTG Status Supabase
+  // State RTG Status Supabase Realtime
   const [rtgStatuses, setRtgStatuses] = useState<RTGStatus[]>([]);
   const [rtgLoading, setRtgLoading] = useState(true);
+  const [selectedRtgFilter, setSelectedRtgFilter] = useState("SEMUA");
+
+  // State untuk Filter Periode Tanggal (di bagian atas komponen)
+  const [filterTanggal, setFilterTanggal] = useState<string>("");
+  const [filterBulan, setFilterBulan] = useState<string>("SEMUA");
+  const [filterTahun, setFilterTahun] = useState<string>("SEMUA");
 
   // State Modal Card RTG
   const [selectedRtgCard, setSelectedRtgCard] = useState<RTGCardItem | null>(null);
@@ -172,6 +179,9 @@ export default function DashboardPage() {
     };
   }, [router, supabase]);
 
+  // 2. Buat daftar unit RTG unik secara dinamis dari rtgStatuses
+  const uniqueRtgUnits = Array.from(new Set(rtgStatuses.map((u) => u.unit_code))).sort();
+
   // Fetch User Profiles untuk Admin
   const fetchUserProfiles = async () => {
     const { data, error } = await supabase
@@ -200,7 +210,6 @@ export default function DashboardPage() {
 
     setIsCreatingUser(true);
     try {
-      // Cukup signUp dengan menyertakan metadata. Trigger PostgreSQL akan otomatis mengisi tabel profiles!
       const { data, error } = await supabase.auth.signUp({
         email: newUserEmail,
         password: newUserPassword,
@@ -222,7 +231,6 @@ export default function DashboardPage() {
         setNewUserName("");
         setNewUserEmployeeId("");
         
-        // Beri sedikit jeda waktu agar trigger selesai memasukkan data sebelum memuat ulang tabel
         setTimeout(() => {
           fetchUserProfiles();
         }, 500);
@@ -234,7 +242,6 @@ export default function DashboardPage() {
     }
   };
 
-  // Handler untuk membuka modal/form edit
   const handleStartEdit = (user: UserProfile) => {
     setEditingUser(user);
     setEditName(user.full_name);
@@ -243,7 +250,6 @@ export default function DashboardPage() {
     setEditIsActive(user.is_active);
   };
 
-  // Handler untuk simpan perubahan (UPDATE ke Supabase)
   const handleSaveUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingUser) return;
@@ -294,65 +300,160 @@ export default function DashboardPage() {
     }
   };
 
-  // Realtime Supabase Status RTG
-  useEffect(() => {
-    let isMounted = true;
-
-    async function fetchRTGStatuses() {
-      const { data, error } = await supabase
+  // Realtime Supabase Query RTG Status & Laporan Kerusakan
+  const fetchRealtimeDashboardData = async () => {
+    try {
+      // 1. Ambil data status RTG dari Supabase
+      const { data: statusData, error: statusError } = await supabase
         .from("rtg_statuses")
         .select("id, unit_code, status, block, last_updated")
         .order("unit_code", { ascending: true });
 
-      if (error) {
-        console.error("Gagal mengambil data RTG:", error.message);
-        if (isMounted) setRtgLoading(false);
-        return;
-      }
+      if (statusError) throw statusError;
 
-      if (isMounted) {
-        setRtgStatuses(data ?? []);
-        setRtgLoading(false);
-      }
-    }
-
-    fetchRTGStatuses();
-
-    const channel = supabase
-      .channel("rtg_statuses_dashboard")
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "rtg_statuses" },
-        (payload) => {
-          setRtgStatuses((prev) =>
-            prev.map((item) =>
-              item.id === payload.new.id ? { ...item, ...payload.new } : item
+      // 2. Ambil data laporan rtg_reports beserta work_orders terkait
+      const { data: reportData, error: reportError } = await supabase
+        .from("rtg_reports")
+        .select(`
+          id,
+          rtg_id,
+          report_date,
+          findings,
+          verification_status,
+          priority,
+          created_at,
+          rtg_statuses (
+            unit_code,
+            block
+          ),
+          profiles!pelapor_id (
+            full_name
+          ),
+          work_orders (
+            id,
+            status,
+            resolution_notes,
+            profiles!technician_id (
+              full_name
             )
+          )
+        `)
+        .order("created_at", { ascending: false });
+
+      if (reportError) console.error("Report fetch error:", reportError.message);
+
+      if (statusData) {
+        // Gabungkan data status RTG dengan status laporan yang sedang aktif
+        const mappedStatuses = statusData.map((unit) => {
+          const activeReports = reportData?.filter(
+            (r: any) => r.rtg_id === unit.id || r.rtg_statuses?.unit_code === unit.unit_code
           );
-        }
-      )
+
+          // Cari laporan terbaru yang statusnya belum SELESAI / DONE / REJECTED
+          const latestActive = activeReports?.find((r: any) => {
+            const vStatus = r.verification_status?.toUpperCase();
+            const wo = Array.isArray(r.work_orders) ? r.work_orders[0] : r.work_orders;
+            const woStatus = wo?.status?.toUpperCase();
+
+            return vStatus !== "REJECTED" && woStatus !== "DONE" && woStatus !== "COMPLETED";
+          });
+
+          return {
+            ...unit,
+            activeReport: latestActive || null,
+          };
+        });
+
+        setRtgStatuses(mappedStatuses);
+      }
+
+      // Format daftar laporan untuk tabel dashboard
+      if (reportData) {
+        const formattedReports: Report[] = reportData.map((item: any) => {
+          const dateObj = new Date(item.report_date || item.created_at);
+          const tanggalStr = dateObj.toLocaleDateString("id-ID", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          });
+          const jamStr =
+            dateObj.toLocaleTimeString("id-ID", {
+              hour: "2-digit",
+              minute: "2-digit",
+            }) + " WIB";
+
+          const wo = Array.isArray(item.work_orders) ? item.work_orders[0] : item.work_orders;
+          const woStatus = wo?.status?.toUpperCase();
+          const vStatus = item.verification_status?.toUpperCase();
+
+          let statusTeks = "MENUNGGU VERIFIKASI MCC";
+          if (vStatus === "APPROVED" || wo) {
+            if (woStatus === "ON_PROGRESS" || woStatus === "IN_PROGRESS") {
+              statusTeks = "SEDANG DIKERJAKAN";
+            } else if (woStatus === "WAITING_PART") {
+              statusTeks = "WAITING PART";
+            } else if (woStatus === "DONE" || woStatus === "COMPLETED") {
+              statusTeks = "SELESAI";
+            } else {
+              statusTeks = "MENUNGGU PENANGANAN";
+            }
+          } else if (vStatus === "REJECTED") {
+            statusTeks = "DITOLAK MCC";
+          }
+
+          const findings = item.findings || "";
+          let kategori = "Kendala Umum";
+          const lower = findings.toLowerCase();
+          if (lower.includes("twistlock") || lower.includes("spreader")) kategori = "Spreader & Twistlock";
+          else if (lower.includes("hidrolik") || lower.includes("oli")) kategori = "Sistem Hidrolik";
+          else if (lower.includes("hoist") || lower.includes("motor")) kategori = "Hoist & Motor";
+          else if (lower.includes("listrik") || lower.includes("genset")) kategori = "Sistem Elektrikal / Genset";
+          else if (lower.includes("ban") || lower.includes("gantry")) kategori = "Gantry & Ban";
+
+          return {
+            id: item.id,
+            tanggal: tanggalStr,
+            jam: jamStr,
+            rtg: item.rtg_statuses?.unit_code || "RTG-XX",
+            lokasi: item.rtg_statuses?.block || "BLOK AREA",
+            pelapor: item.profiles?.full_name || "Supervisi Lapangan",
+            praOperasi: findings,
+            pascaOperasi: "-",
+            kategori,
+            prioritas: item.priority ? `P${item.priority}` : "P3",
+            status: statusTeks,
+            teknisi: wo?.profiles?.full_name || "Belum Ditugaskan",
+          };
+        });
+
+        setReports(formattedReports);
+      }
+    } catch (err) {
+      console.error("Fetch realtime error:", err);
+    } finally {
+      setRtgLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRealtimeDashboardData();
+
+    // Subscribe realtime listeners ke 3 tabel terkait
+    const statusChannel = supabase
+      .channel("dashboard_realtime")
+      .on("postgres_changes", { event: "*", schema: "public", table: "rtg_statuses" }, () => fetchRealtimeDashboardData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "rtg_reports" }, () => fetchRealtimeDashboardData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "work_orders" }, () => fetchRealtimeDashboardData())
       .subscribe();
 
     return () => {
-      isMounted = false;
-      supabase.removeChannel(channel);
+      supabase.removeChannel(statusChannel);
     };
   }, [supabase]);
 
   // Modal Detail Tiket Tabel
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
-
-  useEffect(() => {
-    const saved = localStorage.getItem("rtg_reports");
-    if (saved) {
-      try {
-        setReports(JSON.parse(saved));
-      } catch (e) {
-        console.error("Error read localstorage:", e);
-      }
-    }
-  }, []);
 
   // Filter Laporan
   const filteredReports = reports.filter((r) => {
@@ -362,33 +463,95 @@ export default function DashboardPage() {
       r.praOperasi.toLowerCase().includes(searchTerm.toLowerCase()) ||
       r.pascaOperasi.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesKategori =
-      selectedKategoriFilter === "SEMUA" || r.kategori === selectedKategoriFilter;
+    // Filter per Unit RTG (jika pilih RTG tertentu, atau SEMUA)
+    const matchesRtg =
+      selectedRtgFilter === "SEMUA" ||
+      r.rtg.toUpperCase() === selectedRtgFilter.toUpperCase();
 
-    return matchesSearch && matchesKategori;
-  });
+      // Konversi string tanggal dari data report ke format ISO/Date untuk perbandingan
+      // r.tanggal bentuknya misal: "09 Nov 2026"
+      const matchesTanggalSpesifik = !filterTanggal || (() => {
+        // filterTanggal formatnya YYYY-MM-DD dari <input type="date">
+        const selectedDate = new Date(filterTanggal);
+        const itemDate = new Date(r.tanggal); 
+        return (
+          selectedDate.getFullYear() === itemDate.getFullYear() &&
+          selectedDate.getMonth() === itemDate.getMonth() &&
+          selectedDate.getDate() === itemDate.getDate()
+        );
+      })();
 
-  // Pemetaan Card RTG Units
+      const matchesBulan = filterBulan === "SEMUA" || (() => {
+        const itemDate = new Date(r.tanggal);
+        return (itemDate.getMonth() + 1).toString().padStart(2, "0") === filterBulan;
+      })();
+
+      const matchesTahun = filterTahun === "SEMUA" || (() => {
+        const itemDate = new Date(r.tanggal);
+        return itemDate.getFullYear().toString() === filterTahun;
+      })();
+
+      return matchesSearch && matchesRtg && matchesTanggalSpesifik && matchesBulan && matchesTahun;
+    });
+
+  // PEMETAAN COLOR-CODING REALTIME UNTUK CARD RTG (Kuning, Biru, Ungu, Hijau)
   const rtgUnits = rtgStatuses.map((item) => {
-    const activeReport = reports.find(
-      (r) => r.rtg.toUpperCase() === item.unit_code.toUpperCase()
-    );
+    const rep = item.activeReport;
+    const vStatus = rep?.verification_status?.toUpperCase();
+    const wo = Array.isArray(rep?.work_orders) ? rep?.work_orders[0] : rep?.work_orders;
+    const woStatus = wo?.status?.toUpperCase();
 
-    const isRepair = Boolean(activeReport);
+    let statusType: "NORMAL" | "PENDING_MCC" | "ON_PROGRESS" | "WAITING_PART" = "NORMAL";
+    ariaLabel: "Status Unit RTG";
+
+    if (rep) {
+      if (vStatus === "PENDING") {
+        statusType = "PENDING_MCC"; // KUNING
+      } else if (woStatus === "ON_PROGRESS" || woStatus === "IN_PROGRESS" || woStatus === "ASSIGNED") {
+        statusType = "ON_PROGRESS"; // BIRU
+      } else if (woStatus === "WAITING_PART") {
+        statusType = "WAITING_PART"; // UNGU
+      }
+    }
+
+    let subText = "Tanpa laporan aktif";
+    if (statusType === "PENDING_MCC") subText = "Menunggu Approval MCC";
+    else if (statusType === "ON_PROGRESS") subText = "Sedang Dikerjakan";
+    else if (statusType === "WAITING_PART") subText = "Waiting Parts / PM";
+
+    const reportDetailObj: Report | null = rep
+      ? {
+          id: rep.id,
+          tanggal: new Date(rep.created_at).toLocaleDateString("id-ID"),
+          jam: new Date(rep.created_at).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" }) + " WIB",
+          rtg: item.unit_code,
+          lokasi: item.block || "Yard Area",
+          pelapor: rep.profiles?.full_name || "Operator Lapangan",
+          praOperasi: rep.findings || "-",
+          pascaOperasi: "-",
+          kategori: "Kendala RTG",
+          prioritas: rep.priority ? `P${rep.priority}` : "P3",
+          status: subText,
+          teknisi: wo?.profiles?.full_name || "Belum Ditugaskan",
+        }
+      : null;
 
     return {
       id: item.unit_code,
-      status: (isRepair ? "PERBAIKAN" : "NORMAL") as "NORMAL" | "PERBAIKAN",
-      prioritas: activeReport?.prioritas || "MEDIUM P3",
-      sub: isRepair ? "Perlu Perbaikan" : "Tanpa laporan aktif",
+      status: statusType,
+      prioritas: rep?.priority ? `P${rep.priority}` : "P3",
+      sub: subText,
       block: item.block,
       lastUpdated: item.last_updated,
-      reportDetails: activeReport || null,
+      reportDetails: reportDetailObj,
     };
   });
 
-  const totalPerbaikan = rtgUnits.filter((item) => item.status === "PERBAIKAN").length;
-  const totalNormal = rtgUnits.filter((item) => item.status === "NORMAL").length;
+    const totalKuning = rtgUnits.filter((u) => u.status === "PENDING_MCC").length;
+    const totalBiru = rtgUnits.filter((u) => u.status === "ON_PROGRESS").length;
+    const totalUngu = rtgUnits.filter((u) => u.status === "WAITING_PART").length;
+    const totalNormal = rtgUnits.filter((u) => u.status === "NORMAL").length;
+    const totalPerbaikan = totalKuning + totalBiru + totalUngu;
 
   const handleCardClick = (unit: RTGCardItem) => {
     setSelectedRtgCard(unit);
@@ -409,30 +572,12 @@ export default function DashboardPage() {
   const maxVal = Math.max(...Object.values(rtgCounts), 5);
 
   const exportToExcel = () => {
-    let dataToExport: Report[];
-
-    try {
-      const saved = localStorage.getItem("rtg_reports");
-      const parsed: unknown = saved ? JSON.parse(saved) : [];
-
-      if (!Array.isArray(parsed)) {
-        alert("Format data laporan tidak valid.");
-        return;
-      }
-
-      dataToExport = parsed as Report[];
-    } catch (error) {
-      console.error("Gagal membaca data untuk ekspor:", error);
-      alert("Data laporan gagal dibaca.");
-      return;
-    }
-
-    if (dataToExport.length === 0) {
+    if (reports.length === 0) {
       alert("Belum ada data laporan untuk diekspor!");
       return;
     }
 
-    const excelData = dataToExport.map((r, idx) => ({
+    const excelData = reports.map((r, idx) => ({
       No: idx + 1,
       Tanggal: r.tanggal,
       Jam: r.jam,
@@ -497,7 +642,6 @@ export default function DashboardPage() {
 
   const clearData = async () => {
     if (confirm("Apakah Anda yakin ingin mengosongkan semua data laporan? Status RTG akan kembali READY.")) {
-      localStorage.removeItem("rtg_reports");
       setReports([]);
 
       try {
@@ -509,6 +653,7 @@ export default function DashboardPage() {
         if (error) {
           console.error("Gagal memperbarui status Supabase:", error.message);
         }
+        fetchRealtimeDashboardData();
       } catch (err) {
         console.error("Database update error:", err);
       }
@@ -789,17 +934,17 @@ export default function DashboardPage() {
           <div className="bg-white p-4 rounded-xl border border-slate-200 flex justify-between items-start shadow-sm">
             <div>
               <p className="text-xs text-slate-500 font-medium">RTG Perlu Perbaikan</p>
-              <h3 className="text-2xl font-bold mt-1 text-red-600">{totalPerbaikan} <span className="text-xs font-normal text-slate-500">unit</span></h3>
+              <h3 className="text-2xl font-bold mt-1 text-amber-600">{totalPerbaikan} <span className="text-xs font-normal text-slate-500">unit</span></h3>
               <p className="text-[11px] text-slate-500 mt-2 font-medium">
-                {totalPerbaikan > 0 ? `• ${totalPerbaikan} unit butuh pemeliharaan` : "• Seluruh unit siap operasi"}
+                {totalPerbaikan > 0 ? `• ${totalPerbaikan} unit dalam penanganan` : "• Seluruh unit siap operasi"}
               </p>
             </div>
-            <div className="p-2 bg-red-50 text-red-500 rounded-lg"><AlertOctagon size={20} /></div>
+            <div className="p-2 bg-amber-50 text-amber-500 rounded-lg"><AlertOctagon size={20} /></div>
           </div>
 
           <div className="bg-white p-4 rounded-xl border border-slate-200 sm:col-span-2 md:col-span-1 flex justify-between items-start shadow-sm">
             <div>
-              <p className="text-xs text-slate-500 font-medium">Laporan Hari Ini</p>
+              <p className="text-xs text-slate-500 font-medium">Laporan Kendala</p>
               <h3 className="text-2xl font-bold mt-1 text-slate-800">{reports.length} <span className="text-xs font-normal text-slate-500">laporan masuk</span></h3>
               <p className="text-[11px] text-blue-600 mt-2 font-medium">Shift A & Shift B Terhubung</p>
             </div>
@@ -807,55 +952,80 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Status Unit RTG Grid */}
+        {/* STATUS UNIT RTG GRID REALTIME (Kuning, Biru, Ungu, Hijau) */}
         <div className="bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-sm">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
             <div>
-              <h3 className="font-bold text-sm sm:text-base text-slate-800">Status Unit RTG (Layout Area)</h3>
-              <p className="text-[11px] sm:text-xs text-slate-400">Pemetaan sebaran unit di Container Yard (Klik unit untuk detail)</p>
+              <h3 className="font-bold text-sm sm:text-base text-slate-800">Status Unit RTG (Layout Area Realtime)</h3>
+              <p className="text-[11px] sm:text-xs text-slate-400">Pemetaan status unit secara live (Klik unit untuk rincian detail)</p>
             </div>
-            <div className="flex items-center space-x-3 text-xs font-medium self-end sm:self-auto">
-              <span className="flex items-center space-x-1.5">
+
+            {/* LEGENDARIS WARNA STATUS */}
+            <div className="flex flex-wrap items-center gap-3 text-xs font-medium">
+              <span className="flex items-center space-x-1">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-                <span className="text-slate-600">Ready</span> 
+                <span className="text-slate-600">Normal</span> 
                 <span className="text-slate-400">({totalNormal})</span>
               </span>
-              <span className="flex items-center space-x-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-yellow-500"></span>
-                <span className="text-slate-600">Perbaikan</span> 
-                <span className="text-slate-400">({totalPerbaikan})</span>
+              <span className="flex items-center space-x-1">
+                <span className="w-2.5 h-2.5 rounded-full bg-yellow-400"></span>
+                <span className="text-slate-600">Verifikasi MCC</span> 
+                <span className="text-slate-400">({totalKuning})</span>
+              </span>
+              <span className="flex items-center space-x-1">
+                <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
+                <span className="text-slate-600">Dikerjakan</span> 
+                <span className="text-slate-400">({totalBiru})</span>
+              </span>
+              <span className="flex items-center space-x-1">
+                <span className="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
+                <span className="text-slate-600">Waiting Parts</span> 
+                <span className="text-slate-400">({totalUngu})</span>
               </span>
             </div>
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2.5 sm:gap-3">
-            {rtgUnits.map((item) => (
-              <div 
-                key={item.id} 
-                onClick={() => handleCardClick(item)}
-                className={`p-2.5 sm:p-3 rounded-lg border transition cursor-pointer hover:shadow-md ${
-                  item.status === "PERBAIKAN" 
-                    ? item.prioritas?.includes("P1")
-                      ? "bg-red-100 border-red-500 text-red-900 animate-pulse"
-                      : "bg-amber-50 border-amber-300 text-amber-900 hover:border-amber-400"
-                    : "bg-slate-50 border-slate-200 hover:border-emerald-400 hover:bg-emerald-50/30"
-                }`}
-              >
-                <div className="flex justify-between items-start">
-                  <span className="font-bold text-xs sm:text-sm text-slate-800">{item.id}</span>
-                  <span className={`text-[8px] sm:text-[9px] font-bold px-1.5 py-0.5 rounded ${
-                    item.status === "PERBAIKAN" 
-                      ? item.prioritas?.includes("P1") ? "bg-red-600 text-white" : "bg-amber-200 text-amber-800"
-                      : "bg-emerald-100 text-emerald-700"
+            {rtgUnits.map((item) => {
+              // Tentukan style CSS berdasarkan statusnya
+              let cardBg = "bg-emerald-50/50 border-slate-200 hover:border-emerald-500 text-slate-800";
+              let badgeStyle = "bg-emerald-100 text-emerald-700";
+              let badgeText = "NORMAL";
+
+              if (item.status === "PENDING_MCC") {
+                cardBg = "bg-yellow-100 border-yellow-300 text-yellow-900 hover:border-yellow-400 animate-pulse";
+                badgeStyle = "bg-yellow-200 text-yellow-800 font-bold";
+                badgeText = "VERIFIKASI MCC";
+              } else if (item.status === "ON_PROGRESS") {
+                cardBg = "bg-blue-100 border-blue-300 text-blue-900 hover:border-blue-400";
+                badgeStyle = "bg-blue-200 text-blue-800 font-bold";
+                badgeText = "DIKERJAKAN";
+              } else if (item.status === "WAITING_PART") {
+                cardBg = "bg-purple-100 border-purple-300 text-purple-900 hover:border-purple-400";
+                badgeStyle = "bg-purple-200 text-purple-800 font-bold";
+                badgeText = "WAITING PARTS";
+              }
+
+              return (
+                <div 
+                  key={item.id} 
+                  onClick={() => handleCardClick(item)}
+                  className={`p-2.5 sm:p-3 rounded-lg border transition cursor-pointer shadow-xs hover:shadow-md ${cardBg}`}
+                >
+                  <div className="flex justify-between items-start">
+                    <span className="font-bold text-xs sm:text-sm text-slate-800">{item.id}</span>
+                    <span className={`text-[8px] sm:text-[9px] font-extrabold px-1.5 py-0.5 rounded ${badgeStyle}`}>
+                      {badgeText}
+                    </span>
+                  </div>
+                  <p className={`text-[9px] sm:text-[10px] mt-1.5 truncate font-medium ${
+                    item.status !== "NORMAL" ? "font-semibold" : "text-slate-400"
                   }`}>
-                    {item.status}
-                  </span>
+                    {item.sub}
+                  </p>
                 </div>
-                <p className={`text-[9px] sm:text-[10px] mt-1.5 truncate ${item.status === "PERBAIKAN" ? "text-amber-800 font-semibold" : "text-slate-400"}`}>
-                  {item.sub}
-                </p>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -949,7 +1119,7 @@ export default function DashboardPage() {
 
             <div className="flex justify-between items-center text-[11px] text-slate-500 pt-3 border-t border-slate-100 mt-3">
               <span>Total: {reports.length} Laporan</span>
-              <span className="font-semibold text-slate-700">Terselesaikan: 0%</span>
+              <span className="font-semibold text-slate-700">Terselesaikan: {reports.filter(r => r.status === 'SELESAI').length} Unit</span>
             </div>
           </div>
 
@@ -957,8 +1127,42 @@ export default function DashboardPage() {
           <div className="lg:col-span-2 bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
             <div>
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
-                <h3 className="font-bold text-sm text-slate-800">Laporan Kendala Terbaru</h3>
-                <div className="flex space-x-2 w-full sm:w-auto justify-between sm:justify-end">
+                <h3 className="font-bold text-sm text-slate-800">Histori Laporan Kendala Unit RTG</h3>
+                
+                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                  {/* 1. Date Picker untuk Pilih Tanggal Spesifik */}
+                  <div className="flex items-center space-x-1 bg-slate-50 border border-slate-200 rounded-md px-2 py-1">
+                    <span className="text-[10px] text-slate-400 font-bold">Periode:</span>
+                    <input
+                      type="date"
+                      value={filterTanggal}
+                      onChange={(e) => {
+                        setFilterTanggal(e.target.value);
+                        // Reset bulan/tahun jika tanggal spesifik dipilih
+                        if (e.target.value) {
+                          setFilterBulan("SEMUA");
+                          setFilterTahun("SEMUA");
+                        }
+                      }}
+                      className="bg-transparent text-xs text-slate-700 focus:outline-none cursor-pointer"
+                    />
+                  </div>
+
+                  {/* Tombol Reset Filter Tanggal */}
+                  {(filterTanggal || filterBulan !== "SEMUA" || filterTahun !== "SEMUA") && (
+                    <button
+                      onClick={() => {
+                        setFilterTanggal("");
+                        setFilterBulan("SEMUA");
+                        setFilterTahun("SEMUA");
+                      }}
+                      className="text-[10px] text-red-600 hover:underline font-bold px-1"
+                    >
+                      Reset Tgl
+                    </button>
+                  )}
+
+                  {/* Search Input Tiket */}
                   <div className="relative flex-1 sm:flex-initial">
                     <Search className="absolute left-2.5 top-2 text-slate-400" size={14} />
                     <input 
@@ -969,30 +1173,46 @@ export default function DashboardPage() {
                       className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-md text-xs focus:outline-none" 
                     />
                   </div>
-                  {reports.length > 0 && (
-                    <button onClick={clearData} title="Reset Data Laporan" className="p-1.5 border border-slate-200 rounded-md text-red-500 hover:bg-red-50 cursor-pointer">
-                      <Trash2 size={14} />
-                    </button>
-                  )}
-                </div>
               </div>
+          </div>
 
-              {/* Filter Kategori */}
-              <div className="flex items-center space-x-1.5 mb-3 overflow-x-auto pb-1.5 max-w-full">
-                <span className="text-[11px] font-bold text-slate-400 mr-1 shrink-0">Filter:</span>
-                {["SEMUA", "Sistem Hidrolik", "Spreader & Twistlock", "Hoist & Motor", "Sistem Elektrikal / Genset", "Gantry & Ban"].map((kat) => (
+              {/* Filter Per-Unit RTG & Status Histori */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                <div className="flex items-center space-x-1.5 overflow-x-auto pb-1.5 max-w-full">
+                  <span className="text-[11px] font-bold text-slate-400 mr-1 shrink-0">Filter Unit:</span>
+                  
                   <button
-                    key={kat}
-                    onClick={() => setSelectedKategoriFilter(kat)}
-                    className={`px-2.5 py-1 rounded-full text-[10px] font-semibold transition whitespace-nowrap cursor-pointer shrink-0 ${
-                      selectedKategoriFilter === kat
-                        ? "bg-[#0b3c3c] text-white"
+                    onClick={() => setSelectedRtgFilter("SEMUA")}
+                    className={`px-3 py-1 rounded-full text-[10px] font-semibold transition whitespace-nowrap cursor-pointer shrink-0 ${
+                      selectedRtgFilter === "SEMUA"
+                        ? "bg-[#0b3c3c] text-white shadow-sm"
                         : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                     }`}
                   >
-                    {kat}
+                    SEMUA UNIT
                   </button>
-                ))}
+
+                  {uniqueRtgUnits.map((unitCode) => (
+                    <button
+                      key={unitCode}
+                      onClick={() => setSelectedRtgFilter(unitCode)}
+                      className={`px-3 py-1 rounded-full text-[10px] font-semibold transition whitespace-nowrap cursor-pointer shrink-0 ${
+                        selectedRtgFilter === unitCode
+                          ? "bg-[#0b3c3c] text-white shadow-sm"
+                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                      }`}
+                    >
+                      {unitCode}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Info Indikator Histori */}
+                {selectedRtgFilter !== "SEMUA" && (
+                  <span className="text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2.5 py-1 rounded-md border border-emerald-200 shrink-0">
+                    Histori Laporan: {selectedRtgFilter} ({filteredReports.length} Tiket)
+                  </span>
+                )}
               </div>
 
               {/* Tabel Data */}
@@ -1069,7 +1289,7 @@ export default function DashboardPage() {
         </div>
       </main>
 
-      {/* POP-UP MODAL 1: KLIK CARD RTG */}
+      {/* POP-UP MODAL REALTIME: KLIK CARD RTG */}
       {showRtgModal && selectedRtgCard && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-5 sm:p-6 shadow-2xl space-y-4">
@@ -1077,11 +1297,21 @@ export default function DashboardPage() {
               <div className="flex items-center space-x-2">
                 <span className="font-extrabold text-lg text-slate-900">{selectedRtgCard.id}</span>
                 <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                  selectedRtgCard.status === "PERBAIKAN"
-                    ? "bg-amber-100 text-amber-800 border border-amber-300"
+                  selectedRtgCard.status === "PENDING_MCC"
+                    ? "bg-yellow-100 text-yellow-800 border border-yellow-300"
+                    : selectedRtgCard.status === "ON_PROGRESS"
+                    ? "bg-blue-100 text-blue-800 border border-blue-300"
+                    : selectedRtgCard.status === "WAITING_PART"
+                    ? "bg-purple-100 text-purple-800 border border-purple-300"
                     : "bg-emerald-100 text-emerald-700 border border-emerald-300"
                 }`}>
-                  {selectedRtgCard.status === "PERBAIKAN" ? "PERLU PERBAIKAN" : "READY / NORMAL"}
+                  {selectedRtgCard.status === "PENDING_MCC"
+                    ? "MENUNGGU VERIFIKASI MCC"
+                    : selectedRtgCard.status === "ON_PROGRESS"
+                    ? "SEDANG DIKERJAKAN"
+                    : selectedRtgCard.status === "WAITING_PART"
+                    ? "WAITING PARTS / PM"
+                    : "READY / NORMAL"}
                 </span>
               </div>
               <button
@@ -1092,14 +1322,24 @@ export default function DashboardPage() {
               </button>
             </div>
 
-            {selectedRtgCard.status === "PERBAIKAN" ? (
+            {selectedRtgCard.status !== "NORMAL" ? (
               <div className="space-y-3 text-xs">
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start space-x-2.5 text-amber-900">
-                  <AlertOctagon size={20} className="text-amber-600 shrink-0 mt-0.5" />
+                <div className={`p-3 rounded-xl border flex items-start space-x-2.5 ${
+                  selectedRtgCard.status === "PENDING_MCC"
+                    ? "bg-yellow-50 border-yellow-200 text-yellow-900"
+                    : selectedRtgCard.status === "ON_PROGRESS"
+                    ? "bg-blue-50 border-blue-200 text-blue-900"
+                    : "bg-purple-50 border-purple-200 text-purple-900"
+                }`}>
+                  {selectedRtgCard.status === "WAITING_PART" ? (
+                    <Package size={20} className="text-purple-600 shrink-0 mt-0.5" />
+                  ) : (
+                    <AlertOctagon size={20} className="shrink-0 mt-0.5" />
+                  )}
                   <div>
-                    <h4 className="font-bold text-xs">Unit Membutuhkan Tindakan Perbaikan</h4>
-                    <p className="text-[11px] text-amber-700 mt-0.5 leading-relaxed">
-                      Laporan kerusakan aktif terdeteksi untuk unit {selectedRtgCard.id}. Sistem menyarankan penanganan oleh tim teknisi.
+                    <h4 className="font-bold text-xs">Unit Membutuhkan Pemeliharaan / Perbaikan</h4>
+                    <p className="text-[11px] mt-0.5 leading-relaxed">
+                      Laporan aktif terdeteksi untuk unit {selectedRtgCard.id}. Status terkini: <strong>{selectedRtgCard.sub}</strong>.
                     </p>
                   </div>
                 </div>
@@ -1123,10 +1363,8 @@ export default function DashboardPage() {
                     <p className="font-bold text-slate-700 mt-0.5">{selectedRtgCard.reportDetails?.kategori || "Kendala Umum"}</p>
                   </div>
                   <div>
-                    <p className="text-slate-400">Waktu Masuk:</p>
-                    <p className="font-bold text-slate-700 mt-0.5">
-                      {selectedRtgCard.reportDetails ? `${selectedRtgCard.reportDetails.jam}` : "Terbaru"}
-                    </p>
+                    <p className="text-slate-400">Teknisi PJ:</p>
+                    <p className="font-bold text-slate-700 mt-0.5">{selectedRtgCard.reportDetails?.teknisi || "Belum Ditugaskan"}</p>
                   </div>
                 </div>
 
@@ -1136,16 +1374,14 @@ export default function DashboardPage() {
                     <span>Rincian Temuan Kendala Alat:</span>
                   </p>
                   <p className="p-3 bg-red-50 text-red-700 border border-red-100 rounded-xl leading-relaxed text-xs">
-                    {selectedRtgCard.reportDetails
-                      ? (selectedRtgCard.reportDetails.praOperasi !== "-" ? selectedRtgCard.reportDetails.praOperasi : selectedRtgCard.reportDetails.pascaOperasi)
-                      : "Terdeteksi anomali kondisi alat, menunggu detail verifikasi MCC."}
+                    {selectedRtgCard.reportDetails?.praOperasi || "Terdeteksi anomali kondisi alat."}
                   </p>
                 </div>
 
                 {selectedRtgCard.reportDetails?.pelapor && (
                   <div className="text-[11px] text-slate-500 flex justify-between items-center pt-1 px-1">
                     <span>Pelapor: <strong className="text-slate-700">{selectedRtgCard.reportDetails.pelapor}</strong></span>
-                    <span>Status Tiket: <strong className="text-amber-700">{selectedRtgCard.reportDetails.status}</strong></span>
+                    <span>Waktu: <strong className="text-slate-700">{selectedRtgCard.reportDetails.jam}</strong></span>
                   </div>
                 )}
               </div>
@@ -1252,7 +1488,7 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* MODAL USER MANAGEMENT (RBAC) WITH EMPLOYEE_ID */}
+      {/* MODAL USER MANAGEMENT (RBAC) */}
       {showUserManagementModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-5">
@@ -1274,7 +1510,6 @@ export default function DashboardPage() {
               </button>
             </div>
 
-            {/* FORM INPUT TERMASUK EMPLOYEE ID */}
             <form onSubmit={handleCreateUser} className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-3">
               <h4 className="text-xs font-bold text-slate-700 flex items-center space-x-1.5">
                 <UserPlus size={15} className="text-[#0b3c3c]" />
@@ -1357,88 +1592,86 @@ export default function DashboardPage() {
               </div>
             </form>
 
-            {/* MODAL / FORM EDIT USER */}
-              {editingUser && (
-                <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs z-[110] flex items-center justify-center p-4">
-                  <div className="bg-white rounded-xl max-w-md w-full p-5 shadow-2xl space-y-4">
-                    <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-                      <h4 className="font-bold text-sm text-slate-800">Edit Data User</h4>
-                      <button onClick={() => setEditingUser(null)} className="text-slate-400 hover:text-slate-600">
-                        <X size={18} />
-                      </button>
+            {editingUser && (
+              <div className="fixed inset-0 bg-slate-950/40 backdrop-blur-xs z-[110] flex items-center justify-center p-4">
+                <div className="bg-white rounded-xl max-w-md w-full p-5 shadow-2xl space-y-4">
+                  <div className="flex justify-between items-center border-b border-slate-100 pb-3">
+                    <h4 className="font-bold text-sm text-slate-800">Edit Data User</h4>
+                    <button onClick={() => setEditingUser(null)} className="text-slate-400 hover:text-slate-600">
+                      <X size={18} />
+                    </button>
+                  </div>
+
+                  <form onSubmit={handleSaveUpdate} className="space-y-3 text-xs">
+                    <div>
+                      <label className="font-semibold text-slate-600">ID Pegawai (Employee ID)</label>
+                      <input
+                        type="text"
+                        value={editEmployeeId}
+                        onChange={(e) => setEditEmployeeId(e.target.value.toUpperCase())}
+                        className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-bold uppercase focus:outline-none focus:border-emerald-500"
+                        required
+                      />
                     </div>
 
-                    <form onSubmit={handleSaveUpdate} className="space-y-3 text-xs">
-                      <div>
-                        <label className="font-semibold text-slate-600">ID Pegawai (Employee ID)</label>
-                        <input
-                          type="text"
-                          value={editEmployeeId}
-                          onChange={(e) => setEditEmployeeId(e.target.value.toUpperCase())}
-                          className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-bold uppercase focus:outline-none focus:border-emerald-500"
-                          required
-                        />
-                      </div>
+                    <div>
+                      <label className="font-semibold text-slate-600">Nama Lengkap</label>
+                      <input
+                        type="text"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500"
+                        required
+                      />
+                    </div>
 
-                      <div>
-                        <label className="font-semibold text-slate-600">Nama Lengkap</label>
-                        <input
-                          type="text"
-                          value={editName}
-                          onChange={(e) => setEditName(e.target.value)}
-                          className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 focus:outline-none focus:border-emerald-500"
-                          required
-                        />
-                      </div>
+                    <div>
+                      <label className="font-semibold text-slate-600">Role Akses</label>
+                      <select
+                        value={editRole}
+                        onChange={(e) => setEditRole(e.target.value as any)}
+                        className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-semibold focus:outline-none focus:border-emerald-500"
+                      >
+                        <option value="admin">ADMIN</option>
+                        <option value="operator">OPERATOR</option>
+                        <option value="mcc">MCC</option>
+                        <option value="teknisi">TEKNISI</option>
+                      </select>
+                    </div>
 
-                      <div>
-                        <label className="font-semibold text-slate-600">Role Akses</label>
-                        <select
-                          value={editRole}
-                          onChange={(e) => setEditRole(e.target.value as any)}
-                          className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-semibold focus:outline-none focus:border-emerald-500"
-                        >
-                          <option value="admin">ADMIN</option>
-                          <option value="operator">OPERATOR</option>
-                          <option value="mcc">MCC</option>
-                          <option value="teknisi">TEKNISI</option>
-                        </select>
-                      </div>
+                    <div>
+                      <label className="font-semibold text-slate-600">Status Akun</label>
+                      <select
+                        value={editIsActive ? "true" : "false"}
+                        onChange={(e) => setEditIsActive(e.target.value === "true")}
+                        className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-semibold focus:outline-none focus:border-emerald-500"
+                      >
+                        <option value="true">Aktif</option>
+                        <option value="false">Non-Aktif (Nolkan Akses)</option>
+                      </select>
+                    </div>
 
-                      <div>
-                        <label className="font-semibold text-slate-600">Status Akun</label>
-                        <select
-                          value={editIsActive ? "true" : "false"}
-                          onChange={(e) => setEditIsActive(e.target.value === "true")}
-                          className="w-full mt-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 font-semibold focus:outline-none focus:border-emerald-500"
-                        >
-                          <option value="true">Aktif</option>
-                          <option value="false">Non-Aktif (Nolkan Akses)</option>
-                        </select>
-                      </div>
-
-                      <div className="flex justify-end space-x-2 pt-2">
-                        <button
-                          type="button"
-                          onClick={() => setEditingUser(null)}
-                          className="px-3.5 py-1.5 bg-slate-100 text-slate-600 rounded-lg font-semibold"
-                        >
-                          Batal
-                        </button>
-                        <button
-                          type="submit"
-                          disabled={isUpdating}
-                          className="px-4 py-1.5 bg-[#0b3c3c] text-white rounded-lg font-semibold hover:bg-[#134e4e] transition"
-                        >
-                          {isUpdating ? "Menyimpan..." : "Simpan Perubahan"}
-                        </button>
-                      </div>
-                    </form>
-                  </div>
+                    <div className="flex justify-end space-x-2 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setEditingUser(null)}
+                        className="px-3.5 py-1.5 bg-slate-100 text-slate-600 rounded-lg font-semibold"
+                      >
+                        Batal
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={isUpdating}
+                        className="px-4 py-1.5 bg-[#0b3c3c] text-white rounded-lg font-semibold hover:bg-[#134e4e] transition"
+                      >
+                        {isUpdating ? "Menyimpan..." : "Simpan Perubahan"}
+                      </button>
+                    </div>
+                  </form>
                 </div>
-              )}
+              </div>
+            )}
 
-            {/* DAFTAR USER BERDASARKAN ROLE */}
             <div className="space-y-3 pt-2">
               <div className="flex items-center justify-between">
                 <h4 className="text-xs font-bold text-slate-700 flex items-center space-x-1.5">
@@ -1499,7 +1732,6 @@ export default function DashboardPage() {
                             {usr.is_active ? "Aktif" : "Non-Aktif"}
                           </span>
                           
-                          {/* Tombol Edit Khusus Admin */}
                           {role === "admin" && (
                             <button
                               onClick={() => handleStartEdit(usr)}
@@ -1509,7 +1741,6 @@ export default function DashboardPage() {
                             </button>
                           )}
 
-                          {/* Tombol Hapus Khusus User Non-Aktif (Admin Only) */}
                           {role === "admin" && !usr.is_active && (
                             <button
                               onClick={() => handleDeleteUser(usr.id, usr.full_name)}
