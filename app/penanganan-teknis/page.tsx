@@ -567,7 +567,7 @@ const handleHoldWaitingPack = async (workOrderId?: string) => {
           </div>
         </div>
 
-        {/* Navigasi Desktop */}
+        {/* Navigasi Desktop/PC */}
         <nav className="hidden lg:flex items-center space-x-2 bg-[#082e2e] p-1.5 rounded-full text-xs shadow-inner">
           {(role === "admin" || role === "operator") && (
             <Link
@@ -1011,7 +1011,7 @@ const handleHoldWaitingPack = async (workOrderId?: string) => {
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center space-x-2">
                 <span className="w-2.5 h-2.5 rounded-full bg-purple-500"></span>
-                <h3 className="font-bold text-xs uppercase tracking-wider text-slate-800">WAITING PACK / PM</h3>
+                <h3 className="font-bold text-xs uppercase tracking-wider text-slate-800">WAITING PART / PM</h3>
                 <span className="bg-purple-100 text-purple-700 font-bold px-2 py-0.5 rounded-full text-[11px]">
                   {tiketWaitingPack.length}
                 </span>
