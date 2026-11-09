@@ -24,6 +24,7 @@ import {
   ArrowRight,
   Radio,
   Menu,
+  RotateCcw,
 } from "lucide-react";
 
 export default function FormPelaporanPage() {
@@ -160,19 +161,18 @@ export default function FormPelaporanPage() {
   };
 
   const ALLOWED_MIME_TYPES = [
-  "image/jpeg",
-  "image/png",
-  "image/webp",
-  "video/mp4",
-  "video/quicktime",
-  "video/webm",
+    "image/jpeg",
+    "image/png",
+    "image/webp",
+    "video/mp4",
+    "video/quicktime",
+    "video/webm",
   ];
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const filesArray = Array.from(e.target.files);
       
-      // Filter file hanya yang sesuai format gambar atau video
       const validFiles = filesArray.filter((file) => {
         const isValidType = ALLOWED_MIME_TYPES.includes(file.type);
         if (!isValidType) {
@@ -241,7 +241,6 @@ export default function FormPelaporanPage() {
 
     setTimeout(async () => {
       try {
-        // 1. Dapatkan data User yang sedang Login
         const {
           data: { user },
           error: userError,
@@ -250,12 +249,10 @@ export default function FormPelaporanPage() {
           throw new Error("Pengguna tidak terautentikasi.");
         }
 
-        // 2. Pastikan format unit_code sesuai dengan isi database (misal "RTG 38")
         const formattedUnitCode = nomorRtg.startsWith("RTG")
           ? nomorRtg
           : `RTG ${nomorRtg}`;
 
-        // 3. Ambil ID dari unit RTG di tabel `rtg_statuses`
         const { data: rtgUnitData, error: rtgFetchError } = await supabase
           .from("rtg_statuses")
           .select("id")
@@ -272,9 +269,6 @@ export default function FormPelaporanPage() {
           return;
         }
 
-        // =========================================================================
-        // PERBAIKAN UTAMA: UPLOAD FILE KE SUPABASE STORAGE SEBELUM INSERT
-        // =========================================================================
         let uploadedUrls: string[] = [];
 
         if (selectedFiles && selectedFiles.length > 0) {
@@ -285,7 +279,6 @@ export default function FormPelaporanPage() {
               .substring(2, 7)}.${fileExt}`;
             const filePath = `reports/${fileName}`;
 
-            // Upload ke Supabase Storage (Pastikan nama bucket "rtg_media" sudah dibuat & status PUBLIC)
             const { error: uploadError } = await supabase.storage
               .from("rtg_media")
               .upload(filePath, file);
@@ -293,7 +286,6 @@ export default function FormPelaporanPage() {
             if (uploadError) {
               console.error(`Gagal upload ${file.name}:`, uploadError.message);
             } else {
-              // Dapatkan Public URL setelah file berhasil terunggah
               const { data: publicUrlData } = supabase.storage
                 .from("rtg_media")
                 .getPublicUrl(filePath);
@@ -305,7 +297,6 @@ export default function FormPelaporanPage() {
           }
         }
 
-        // 4. Simpan ke Tabel Supabase `rtg_reports` dengan URL media yang valid
         const { error: insertReportError } = await supabase
           .from("rtg_reports")
           .insert([
@@ -315,19 +306,16 @@ export default function FormPelaporanPage() {
               report_date: new Date().toISOString(),
               findings: deskripsiKendala,
               verification_status: "PENDING",
-              priority: 3, // Diisi tipe number 3 (bukan string "3" jika tipe kolom int4)
-              evidence_url: uploadedUrls, // <--- SUDAH TERISI ARRAY URL PUBLIC
+              priority: 3,
+              evidence_url: uploadedUrls,
             },
           ]);
 
         if (insertReportError) {
           console.error("Gagal simpan ke rtg_reports:", insertReportError.message);
           alert(`Gagal menyimpan laporan: ${insertReportError.message}`);
-        } else {
-          console.log("Berhasil menyimpan laporan ke rtg_reports!");
         }
 
-        // 5. Update Status di tabel `rtg_statuses` dari READY -> NEED_REPAIR
         const { error: updateRtgStatusError } = await supabase
           .from("rtg_statuses")
           .update({
@@ -344,7 +332,6 @@ export default function FormPelaporanPage() {
           );
         }
 
-        // 6. Simpan ke localStorage (Untuk cadangan / sync temporary frontend)
         const mediaBase64Promises = selectedFiles.map((file) => {
           return new Promise<{ type: string; url: string; name: string }> (
             (resolve) => {
@@ -422,7 +409,7 @@ export default function FormPelaporanPage() {
     }, totalDuration);
   };
 
-  const handleCloseModalAndNavigate = () => {
+  const handleCloseModalAndReset = () => {
     setIsSuccess(false);
     setNomorRtg("");
     setLokasiBlok("");
@@ -432,7 +419,9 @@ export default function FormPelaporanPage() {
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
-    router.push("/dasboard");
+    if (role === "admin") {
+      router.push("/dasboard");
+    }
   };
 
   if (profileLoading || !role) {
@@ -448,7 +437,6 @@ export default function FormPelaporanPage() {
       {/* Header / Navbar */}
       <header className="bg-[#0b3c3c] text-white px-4 sm:px-8 py-4 flex items-center justify-between shadow-md relative z-50">
         <div className="flex items-center gap-2.5 sm:gap-3">
-          {/* Tombol Hamburger khusus HP */}
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="p-1.5 text-slate-200 hover:text-white lg:hidden rounded-lg hover:bg-[#134e4e] transition cursor-pointer"
@@ -644,7 +632,7 @@ export default function FormPelaporanPage() {
         </div>
       </header>
 
-     
+
       {/* Main Form */}
       <main className="max-w-5xl mx-auto mt-6 px-4">
         <div className="bg-white rounded-2xl p-4 sm:p-8 border border-slate-200 shadow-sm space-y-6">
@@ -666,7 +654,6 @@ export default function FormPelaporanPage() {
 
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Tanggal Realtime */}
               <div>
                 <div className="flex justify-between items-center mb-1">
                   <label className="text-xs font-bold text-slate-700">Tanggal Pelaporan (Realtime)</label>
@@ -683,7 +670,6 @@ export default function FormPelaporanPage() {
                 />
               </div>
 
-              {/* Nomor RTG */}
               <div>
                 <div className="flex justify-between items-center mb-1">
                   <label className="text-xs font-bold text-slate-700">Nomor RTG *</label>
@@ -711,9 +697,6 @@ export default function FormPelaporanPage() {
               </div>
             )}
 
-        
-
-            {/* Template Teks Cepat */}
             <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 space-y-2">
               <label className="text-[11px] font-bold text-slate-600 flex items-center space-x-1">
                 <Zap size={13} className="text-amber-500" />
@@ -733,7 +716,6 @@ export default function FormPelaporanPage() {
               </div>
             </div>
 
-            {/* Deskripsi Kendala */}
             <div>
               <div className="flex justify-between items-center mb-1">
                 <label className="text-xs font-bold text-slate-700">Deskripsi Temuan / Kendala Alat *</label>
@@ -750,7 +732,6 @@ export default function FormPelaporanPage() {
               />
             </div>
 
-            {/* Lampiran Foto & Video */}
             <div>
               <div className="flex justify-between items-center mb-1">
                 <label className="text-xs font-bold text-slate-700">
@@ -784,7 +765,6 @@ export default function FormPelaporanPage() {
                 </p>
               </div>
 
-              {/* Display Preview */}
               {filePreviews.length > 0 && (
                 <div className="mt-4 space-y-2">
                   <p className="text-xs font-bold text-slate-700">Display Lampiran Terpilih ({filePreviews.length}/3):</p>
@@ -832,8 +812,8 @@ export default function FormPelaporanPage() {
               <div className="flex items-center space-x-3 w-full md:w-auto justify-end">
                 <button
                   type="button"
-                  onClick={() => router.push("/dasboard")}
-                  className="px-5 py-2.5 bg-slate-100 text-slate-600 rounded-lg text-xs font-medium hover:bg-slate-200 transition"
+                  onClick={() => role === "admin" ? router.push("/dasboard") : handleCloseModalAndReset()}
+                  className="px-5 py-2.5 bg-slate-100 text-slate-600 rounded-lg text-xs font-medium hover:bg-slate-200 transition cursor-pointer"
                 >
                   Batal
                 </button>
@@ -850,13 +830,13 @@ export default function FormPelaporanPage() {
         </div>
       </main>
 
-      {/* POP-UP MODAL SEAMLESS */}
+      {/* POP-UP MODAL SEAMLESS DENGAN ANIMASI CENTANG SUKSES */}
       {(isSubmitting || isSuccess) && (
         <div className="fixed inset-0 bg-slate-950/75 backdrop-blur-md z-[100] flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full text-center shadow-2xl relative overflow-hidden space-y-5 text-white">
+          <div className="bg-slate-900 border border-slate-800 rounded-3xl p-6 max-w-md w-full text-center shadow-2xl relative overflow-hidden space-y-5 text-white animate-in zoom-in-95 duration-200">
             <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-400"></div>
 
-            {/* STATUS LOADING */}
+            {/* STATUS LOADING TRANSMISI */}
             {isSubmitting && (
               <div className="space-y-5 pt-2">
                 <div className="flex justify-between items-center text-xs px-1">
@@ -918,17 +898,20 @@ export default function FormPelaporanPage() {
               </div>
             )}
 
-            {/* STATUS SUKSES */}
+            {/* STATUS SUKSES: ANIMASI CENTANG & PESAN KONFIRMASI */}
             {isSuccess && (
-              <div className="space-y-4 py-1 animate-in fade-in zoom-in duration-300">
-                <div className="w-14 h-14 bg-emerald-500/10 text-emerald-400 rounded-2xl mx-auto flex items-center justify-center border border-emerald-500/20 shadow-inner">
-                  <CheckCircle2 size={32} className="text-emerald-400" />
+              <div className="space-y-4 py-1 animate-in zoom-in duration-300">
+                {/* ANIMASI CENTANG MELINGKAR */}
+                <div className="w-16 h-16 bg-emerald-500/10 text-emerald-400 rounded-full mx-auto flex items-center justify-center border border-emerald-500/30 shadow-[0_0_20px_rgba(16,185,129,0.3)] animate-bounce duration-700">
+                  <CheckCircle2 size={40} className="text-emerald-400 animate-in spin-in-12 duration-500" />
                 </div>
 
                 <div>
-                  <h3 className="font-extrabold text-base text-white">Laporan Berhasil Terkirim!</h3>
-                  <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                    Data kerusakan unit <strong className="text-white">{nomorRtg}</strong> telah berhasil ditransmisikan ke antrean <span className="text-emerald-400 font-bold">Verifikasi MCC</span>.
+                  <h3 className="font-extrabold text-lg text-white tracking-wide">
+                    Laporan Berhasil Dibuat!
+                  </h3>
+                  <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">
+                    Data temuan kendala unit <strong className="text-white font-bold">{nomorRtg}</strong> telah berhasil ditransmisikan dan masuk ke antrean <span className="text-emerald-400 font-bold">Verifikasi MCC</span>.
                   </p>
                 </div>
 
@@ -943,20 +926,31 @@ export default function FormPelaporanPage() {
                   </div>
                   <div className="flex justify-between items-center text-slate-400">
                     <span>Status Tiket:</span>
-                    <span className="text-amber-400 font-extrabold bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 flex items-center space-x-1">
+                    <span className="text-amber-400 font-extrabold bg-amber-500/10 px-2.5 py-0.5 rounded-full border border-amber-500/20 flex items-center space-x-1 text-[10px]">
                       <span className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse"></span>
                       <span>MENUNGGU VERIFIKASI MCC</span>
                     </span>
                   </div>
                 </div>
 
-                <button
-                  onClick={handleCloseModalAndNavigate}
-                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-md flex items-center justify-center space-x-2 cursor-pointer group"
-                >
-                  <span>Pantau di Dashboard Monitoring</span>
-                  <ArrowRight size={14} className="group-hover:translate-x-1 transition" />
-                </button>
+                {/* TOMBOL AKSI AKHIR SESUAI ROLE */}
+                {role === "admin" ? (
+                  <button
+                    onClick={handleCloseModalAndReset}
+                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-md flex items-center justify-center space-x-2 cursor-pointer group"
+                  >
+                    <span>Pantau di Dashboard Monitoring</span>
+                    <ArrowRight size={14} className="group-hover:translate-x-1 transition" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleCloseModalAndReset}
+                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-md flex items-center justify-center space-x-2 cursor-pointer group"
+                  >
+                    <RotateCcw size={14} />
+                    <span>Buat Laporan Baru</span>
+                  </button>
+                )}
               </div>
             )}
           </div>

@@ -65,8 +65,6 @@ export default function PenangananTeknisPage() {
   const [selectedUrgensiFilter, setSelectedUrgensiFilter] = useState("SEMUA");
   const [selectedTimFilter, setSelectedTimFilter] = useState("SEMUA");
 
- 
-
   const supabase = createClient();
   const [role, setRole] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -555,6 +553,7 @@ const handleHoldWaitingPart = async (workOrderId?: string) => {
     
 
       {/* Header / Navbar Responsif */}
+      <header className="bg-[#0b3c3c] text-white shadow-md relative z-50">
         <div className="px-4 sm:px-8 py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-2.5 sm:gap-3">
             {/* Tombol Hamburger Khusus HP */}
@@ -664,6 +663,7 @@ const handleHoldWaitingPart = async (workOrderId?: string) => {
                 onClick={() => {
                   setShowNotif(!showNotif);
                   setShowProfile(false);
+                  
                 }}
                 className="p-2 text-slate-200 hover:text-white rounded-full hover:bg-[#134e4e] transition relative cursor-pointer"
               >
@@ -709,6 +709,7 @@ const handleHoldWaitingPart = async (workOrderId?: string) => {
                 onClick={() => {
                   setShowProfile(!showProfile);
                   setShowNotif(false);
+                  
                 }}
                 className="flex items-center space-x-2 sm:space-x-2.5 bg-[#134e4e] hover:bg-[#185d5d] px-2.5 sm:px-3.5 py-1.5 rounded-full text-xs transition border border-emerald-700/50 cursor-pointer"
               >
@@ -761,8 +762,7 @@ const handleHoldWaitingPart = async (workOrderId?: string) => {
             </div>
           </div>
         </div>
-
-        
+      </header>
 
       {/* Main Container */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 mt-4 sm:mt-6 space-y-4 sm:space-y-5">
