@@ -67,6 +67,8 @@ export default function ApprovalMCCPage() {
   const [selectedUrgensiFilter, setSelectedUrgensiFilter] = useState("SEMUA");
   const [selectedTimFilter, setSelectedTimFilter] = useState("SEMUA");
 
+  // State Hamburger Menu Mobile
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Supabase Client
   const supabase = createClient();
@@ -555,32 +557,39 @@ export default function ApprovalMCCPage() {
 
   return (
     <div className="min-h-screen bg-slate-100 text-slate-800 font-sans text-xs pb-10">
-     
       {/* Header / Navbar Responsif */}
-        <div className="px-4 sm:px-8 py-3.5 flex items-center justify-between">
-          <div className="flex items-center gap-2.5 sm:gap-3">
-         
-            <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center shrink-0">
-              <img
-                src="/images/logopelindo.webp"
-                alt="Logo Pelindo"
-                width={48}
-                height={48}
-                className="object-contain"
-              />
-            </div>
-            <div>
-              <h1 className="font-bold text-sm sm:text-base leading-none tracking-tight flex items-center space-x-1.5">
-                <span>PELAPORAN RTG</span>
-                <span className="bg-emerald-500/30 text-emerald-200 text-[8px] sm:text-[9px] font-medium px-1.5 py-0.5 rounded border border-emerald-400/30">
-                  TOS LIVE
-                </span>
-              </h1>
-              <p className="text-[9px] sm:text-[10px] text-emerald-200 mt-0.5 hidden sm:block">
-                OPERASIONAL LAPANGAN TERMINAL PETIKEMAS SURABAYA
-              </p>
-            </div>
+      <header className="bg-[#0b3c3c] text-white px-4 sm:px-8 py-3.5 flex items-center justify-between shadow-md relative z-50">
+        <div className="flex items-center gap-2.5 sm:gap-3">
+          {/* Tombol Hamburger khusus Layar HP (lg:hidden) */}
+          <button
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            className="p-1.5 text-slate-200 hover:text-white lg:hidden rounded-lg hover:bg-[#134e4e] transition cursor-pointer"
+            aria-label="Toggle Navigation Menu"
+          >
+            {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
+
+          <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center shrink-0">
+            <img
+              src="/images/logopelindo.webp"
+              alt="Logo Pelindo"
+              width={48}
+              height={48}
+              className="object-contain"
+            />
           </div>
+          <div>
+            <h1 className="font-bold text-sm sm:text-base leading-none tracking-tight flex items-center space-x-1.5">
+              <span>PELAPORAN RTG</span>
+              <span className="bg-emerald-500/30 text-emerald-200 text-[8px] sm:text-[9px] font-medium px-1.5 py-0.5 rounded border border-emerald-400/30">
+                TOS LIVE
+              </span>
+            </h1>
+            <p className="text-[9px] sm:text-[10px] text-emerald-200 mt-0.5 hidden sm:block">
+              OPERASIONAL LAPANGAN TERMINAL PETIKEMAS SURABAYA
+            </p>
+          </div>
+        </div>
 
         {/* Navigasi Desktop */}
         <nav className="hidden lg:flex items-center space-x-2 bg-[#082e2e] p-1.5 rounded-full text-xs shadow-inner">
@@ -595,168 +604,173 @@ export default function ApprovalMCCPage() {
             <Link href="/penanganan-teknis" className={`px-5 py-2 rounded-full transition font-semibold ${pathname === "/penanganan-teknis" ? "bg-white text-[#0b3c3c] shadow" : "text-slate-300 hover:text-white"}`}>Penanganan Teknisi</Link>
           )}
 
+          {(role === "admin" || role === "mcc") && (
+            <Link
+              href="/audit-log"
+              className={`px-5 py-2 rounded-full transition font-semibold ${
+                pathname === "/audit-log"
+                  ? "bg-white text-[#0b3c3c] shadow"
+                  : "text-slate-300 hover:text-white"
+              }`}
+            >
+              Audit Log
+            </Link>
+          )}
+        </nav>
 
-            {(role?.toLowerCase() === "admin" || role?.toLowerCase() === "mcc") && (
-              <Link
-                href="/verifikasi-mcc"
-                className={`px-5 py-2 rounded-full transition font-semibold ${
-                  pathname === "/verifikasi-mcc"
-                    ? "bg-white text-[#0b3c3c] shadow"
-                    : "text-slate-300 hover:text-white"
-                }`}
-              >
-                Approval MCC
-              </Link>
-            )}
-
-            {(role?.toLowerCase() === "admin" || role?.toLowerCase() === "teknisi" || role?.toLowerCase() === "mcc") && (
-              <Link
-                href="/dasboard"
-                className={`px-5 py-2 rounded-full transition font-semibold ${
-                  pathname === "/dasboard"
-                    ? "bg-white text-[#0b3c3c] shadow"
-                    : "text-slate-300 hover:text-white"
-                }`}
-              >
-                Dashboard Monitoring
-              </Link>
-            )}
-
-            {(role?.toLowerCase() === "admin" || role?.toLowerCase() === "teknisi") && (
-              <Link
-                href="/penanganan-teknis"
-                className={`px-5 py-2 rounded-full transition font-semibold ${
-                  pathname === "/penanganan-teknis"
-                    ? "bg-white text-[#0b3c3c] shadow"
-                    : "text-slate-300 hover:text-white"
-                }`}
-              >
-                Penanganan Teknisi
-              </Link>
-            )}
-
-            {(role?.toLowerCase() === "admin" || role?.toLowerCase() === "mcc") && (
-              <Link
-                href="/audit-log"
-                className={`px-5 py-2 rounded-full transition font-semibold ${
-                  pathname === "/audit-log"
-                    ? "bg-white text-[#0b3c3c] shadow"
-                    : "text-slate-300 hover:text-white"
-                }`}
-              >
-                Audit Log
-              </Link>
-            )}
-          </nav>
-
-          {/* Icon Notifikasi & Profile (Sesuai Existing Kode Kamu) */}
-          <div className="flex items-center space-x-2 sm:space-x-4 shrink-0">
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowNotif(!showNotif);
-                  setShowProfile(false);
-                }}
-                className="p-2 text-slate-200 hover:text-white rounded-full hover:bg-[#134e4e] transition relative cursor-pointer"
-              >
-                <Bell size={18} />
-                {reports.length > 0 && (
-                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
-                )}
-              </button>
-
-              {showNotif && (
-                <div className="absolute right-0 mt-3 w-72 sm:w-80 bg-white text-slate-800 rounded-xl shadow-xl border border-slate-200 overflow-hidden z-50">
-                  <div className="p-3 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
-                    <span className="font-bold text-xs text-slate-700">Notifikasi Kendala</span>
-                    <span className="text-[10px] bg-red-100 text-red-600 font-semibold px-2 py-0.5 rounded-full">
-                      {reports.length} Baru
-                    </span>
-                  </div>
-                  <div className="max-h-64 overflow-y-auto divide-y divide-slate-100">
-                    {reports.length === 0 ? (
-                      <div className="p-4 text-center text-xs text-slate-400">Tidak ada notifikasi baru</div>
-                    ) : (
-                      reports.slice(0, 4).map((item, idx) => (
-                        <div key={idx} className="p-3 hover:bg-slate-50 transition text-xs">
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="font-bold text-red-600">{item.rtg}</span>
-                            <span className="text-[10px] text-slate-400">{item.jam}</span>
-                          </div>
-
-                          <p className="text-slate-600 text-[11px] line-clamp-2">
-                            {item.praOperasi !== "-" ? item.praOperasi : item.pascaOperasi}
-                          </p>
+        {/* Notifikasi & Profile Pop-up */}
+        <div className="flex items-center space-x-2 sm:space-x-4 shrink-0">
+          <div className="relative">
+            <button
+              onClick={() => {
+                setShowNotif(!showNotif);
+                setShowProfile(false);
+                setMobileMenuOpen(false);
+              }}
+              className="p-2 text-slate-200 hover:text-white rounded-full hover:bg-[#134e4e] transition relative cursor-pointer"
+            >
+              <Bell size={18} />
+              {reports.length > 0 && <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>}
+            </button>
+            {showNotif && (
+              <div className="absolute right-0 mt-3 w-72 sm:w-80 bg-white text-slate-800 rounded-xl shadow-xl border border-slate-200 overflow-hidden z-50">
+                <div className="p-3 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+                  <span className="font-bold text-xs text-slate-700">Notifikasi Kendala</span>
+                  <span className="text-[10px] bg-red-100 text-red-600 font-semibold px-2 py-0.5 rounded-full">{reports.length} Baru</span>
+                </div>
+                <div className="max-h-64 overflow-y-auto divide-y divide-slate-100">
+                  {reports.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-slate-400">Tidak ada notifikasi baru</div>
+                  ) : (
+                    reports.slice(0, 4).map((item, idx) => (
+                      <div key={idx} className="p-3 hover:bg-slate-50 transition text-xs">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="font-bold text-red-600">{item.rtg}</span>
+                          <span className="text-[10px] text-slate-400">{item.jam}</span>
                         </div>
-                      ))
-                    )}
+                        <p className="text-slate-600 text-[11px] line-clamp-2">{item.praOperasi}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="relative">
+            <button
+              onClick={() => {
+                setShowProfile(!showProfile);
+                setShowNotif(false);
+                setMobileMenuOpen(false);
+              }}
+              className="flex items-center space-x-2 sm:space-x-2.5 bg-[#134e4e] hover:bg-[#185d5d] px-2.5 sm:px-3.5 py-1.5 rounded-full text-xs transition border border-emerald-700/50 cursor-pointer"
+            >
+              <div className="p-1 bg-emerald-500 rounded-full text-white">
+                <User size={14} />
+              </div>
+              <div className="text-left leading-tight hidden sm:block">
+                <p className="font-semibold text-white text-[11px]">Supervisi Lapangan</p>
+                <p className="text-[9px] text-emerald-200">Shift A • Pier 2</p>
+              </div>
+            </button>
+            {showProfile && (
+              <div className="absolute right-0 mt-3 w-64 bg-white text-slate-800 rounded-xl shadow-xl border border-slate-200 overflow-hidden z-50 p-4 space-y-3">
+                <div className="flex items-center space-x-3 border-b border-slate-100 pb-3">
+                  <div className="w-10 h-10 rounded-full bg-[#0b3c3c] text-white flex items-center justify-center font-bold text-sm">MC</div>
+                  <div>
+                    <h4 className="font-bold text-xs text-slate-800">Operator MCC</h4>
+                    <p className="text-[10px] text-slate-400">ID MCC: #MCC-8821</p>
                   </div>
                 </div>
-              )}
-            </div>
 
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowProfile(!showProfile);
-                  setShowNotif(false);
-                }}
-                className="flex items-center space-x-2 sm:space-x-2.5 bg-[#134e4e] hover:bg-[#185d5d] px-2.5 sm:px-3.5 py-1.5 rounded-full text-xs transition border border-emerald-700/50 cursor-pointer"
-              >
-                <div className="p-1 bg-emerald-500 rounded-full text-white">
-                  <User size={14} />
-                </div>
-                <div className="text-left leading-tight hidden sm:block">
-                  <p className="font-semibold text-white text-[11px]">Supervisi Lapangan</p>
-                  <p className="text-[9px] text-emerald-200">Role: {role?.toUpperCase() || "ADMIN"}</p>
-                </div>
-              </button>
-
-              {showProfile && (
-                <div className="absolute right-0 mt-3 w-64 bg-white text-slate-800 rounded-xl shadow-xl border border-slate-200 overflow-hidden z-50 p-4 space-y-3">
-                  <div className="flex items-center space-x-3 border-b border-slate-100 pb-3">
-                    <div className="w-10 h-10 rounded-full bg-[#0b3c3c] text-white flex items-center justify-center font-bold text-sm">
-                      SL
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-xs text-slate-800">Bambang S.</h4>
-                      <p className="text-[10px] text-slate-400">Role: {role?.toUpperCase()}</p>
-                    </div>
+                <div className="space-y-1.5 text-xs">
+                  <div className="flex justify-between text-slate-600">
+                    <span>Shift Tugas:</span>
+                    <span className="font-semibold text-slate-800">Shift A (07:00 - 15:00)</span>
                   </div>
-
-                  <div className="space-y-1.5 text-xs">
-                    <div className="flex justify-between text-slate-600">
-                      <span>Shift Tugas:</span>
-                      <span className="font-semibold text-slate-800">Shift A (07:00 - 15:00)</span>
-                    </div>
-                    <div className="flex justify-between text-slate-600">
-                      <span>Area Pengawasan:</span>
-                      <span className="font-semibold text-slate-800">Pier 2 Dermaga</span>
-                    </div>
-                    <div className="flex justify-between text-slate-600">
-                      <span>Status TOS:</span>
-                      <span className="text-emerald-600 font-semibold">Terhubung</span>
-                    </div>
+                  <div className="flex justify-between text-slate-600">
+                    <span>Area Pengawasan:</span>
+                    <span className="font-semibold text-slate-800">Pier 2 Dermaga</span>
                   </div>
-
-                  <button
-                    type="button"
-                    onClick={() => router.push("/")}
-                    className="w-full mt-2 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-xs font-semibold flex items-center justify-center space-x-1.5 transition cursor-pointer"
-                  >
-                    <LogOut size={14} />
-                    <span>Ganti Shift / Logout</span>
-                  </button>
+                  <div className="flex justify-between text-slate-600">
+                    <span>Status TOS:</span>
+                    <span className="text-emerald-600 font-semibold">Terhubung</span>
+                  </div>
                 </div>
-              )}
-            </div>
+
+                <button
+                  onClick={() => router.push("/")}
+                  className="w-full mt-2 py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg text-xs font-semibold flex items-center justify-center space-x-1.5 transition cursor-pointer"
+                >
+                  <LogOut size={14} />
+                  <span>Ganti Shift / Logout</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
+      </header>
 
+      {/* DROPDOWN NAVIGASI HAMBURGER MENU (KHUSUS MOBILE) */}
+      {mobileMenuOpen && (
+        <div className="lg:hidden bg-[#082e2e] text-white px-4 py-3 border-b border-emerald-800/40 space-y-2 shadow-lg animate-in slide-in-from-top duration-200">
+          {(role === "admin" || role === "operator") && (
+            <Link
+              href="/form-pelaporan"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
+                pathname === "/form-pelaporan"
+                  ? "bg-white text-[#0b3c3c]"
+                  : "text-slate-200 hover:bg-[#104848]"
+              }`}
+            >
+              Form Pelaporan
+            </Link>
+          )}
 
-       
+          {(role === "admin" || role === "mcc") && (
+            <Link
+              href="/verifikasi-mcc"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
+                pathname === "/verifikasi-mcc"
+                  ? "bg-white text-[#0b3c3c]"
+                  : "text-slate-200 hover:bg-[#104848]"
+              }`}
+            >
+              Approval MCC
+            </Link>
+          )}
+
+          <Link
+            href="/dasboard"
+            onClick={() => setMobileMenuOpen(false)}
+            className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
+              pathname === "/dasboard"
+                ? "bg-white text-[#0b3c3c]"
+                : "text-slate-200 hover:bg-[#104848]"
+            }`}
+          >
+            Dashboard
+          </Link>
+
+          {(role === "admin" || role === "teknisi") && (
+            <Link
+              href="/penanganan-teknis"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
+                pathname === "/penanganan-teknis"
+                  ? "bg-white text-[#0b3c3c]"
+                  : "text-slate-200 hover:bg-[#104848]"
+              }`}
+            >
+              Penanganan Teknisi
+            </Link>
+          )}
+        </div>
+      )}
+
       {/* Main Container */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 mt-4 sm:mt-6 space-y-4 sm:space-y-5">
 
