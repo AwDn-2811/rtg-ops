@@ -87,6 +87,19 @@ export default function DashboardPage() {
   const [rtgStatuses, setRtgStatuses] = useState<RTGStatus[]>([]);
   const [rtgLoading, setRtgLoading] = useState(true);
 
+  //state untuk filter grafik laporan per bulan
+  const [grafikFilterBulan, setGrafikFilterBulan] = useState<string>("SEMUA");
+  const [grafikFilterTahun, setGrafikFilterTahun] = useState<string>("SEMUA");
+
+  // Ekstrak tahun unik secara otomatis dari data laporan
+  const availableYears = Array.from(
+    new Set(
+      reports
+        .map((r) => new Date(r.tanggal).getFullYear())
+        .filter((y) => !isNaN(y))
+    )
+  ).sort((a, b) => b - a); // Urutkan dari tahun terbaru ke tertua
+
   // State Modal Card RTG
   const [selectedRtgCard, setSelectedRtgCard] = useState<RTGCardItem | null>(null);
   const [showRtgModal, setShowRtgModal] = useState(false);
@@ -525,18 +538,36 @@ export default function DashboardPage() {
     setShowRtgModal(true);
   };
 
-  // Kalkulasi Data Grafik
+  // Kalkulasi Data Grafik dengan Filter Bulan
   const rtgCounts: Record<string, number> = {};
+
   reports.forEach((r) => {
-    rtgCounts[r.rtg] = (rtgCounts[r.rtg] || 0) + 1;
+    const itemDate = new Date(r.tanggal);
+    if (isNaN(itemDate.getTime())) return;
+
+    const bulanItem = (itemDate.getMonth() + 1).toString().padStart(2, "0");
+    const tahunItem = itemDate.getFullYear().toString();
+
+    const matchesBulan = grafikFilterBulan === "SEMUA" || bulanItem === grafikFilterBulan;
+    const matchesTahun = grafikFilterTahun === "SEMUA" || tahunItem === grafikFilterTahun;
+
+    if (matchesBulan && matchesTahun) {
+      rtgCounts[r.rtg] = (rtgCounts[r.rtg] || 0) + 1;
+    }
   });
 
-  const chartData = Object.keys(rtgCounts).map((key) => ({
-    label: key,
-    value: rtgCounts[key],
-  }));
+  // Urutkan unit secara natural (RTG 2 < RTG 10) supaya batang rapi berurutan
+  const chartData = Object.keys(rtgCounts)
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true }))
+    .map((key) => ({
+      label: key,
+      value: rtgCounts[key],
+    }));
 
-  const maxVal = Math.max(...Object.values(rtgCounts), 5);
+  // Skala sumbu Y: selalu kelipatan 4 supaya 5 garis tick (0..max) angkanya bulat
+  const maxCount = Math.max(0, ...Object.values(rtgCounts));
+  const yMax = Math.max(4, Math.ceil(maxCount / 4) * 4);
+  const yTicks = [0, 1, 2, 3, 4].map((i) => (yMax / 4) * i);
 
   const exportToExcel = () => {
     if (reports.length === 0) {
@@ -1010,49 +1041,117 @@ export default function DashboardPage() {
           {/* 1. GRAFIK LAPORAN KENDALA */}
           <div className="bg-white p-4 sm:p-5 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
             <div>
-              <div className="flex justify-between items-center mb-1">
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1.5 mb-1">
                 <h3 className="font-bold text-sm text-slate-800">Grafik Laporan Kendala</h3>
-                <span className="text-[9px] bg-slate-100 px-2 py-0.5 rounded text-slate-500 font-medium">
-                  Sumbu X: Unit / Y: Jumlah
-                </span>
-              </div>
+
+                {/* Control Filter Bulan & Tahun Grafik */}
+                <div className="flex items-center space-x-1.5">
+                  {/* Dropdown Bulan */}
+                  <select
+                    value={grafikFilterBulan}
+                    onChange={(e) => setGrafikFilterBulan(e.target.value)}
+                    className="bg-slate-50 border border-slate-200 rounded px-2 py-0.5 text-[10px] font-semibold text-slate-600 focus:outline-none cursor-pointer"
+                  >
+                    <option value="SEMUA">Semua Bulan</option>
+                    <option value="01">Januari</option>
+                    <option value="02">Februari</option>
+                    <option value="03">Maret</option>
+                    <option value="04">April</option>
+                    <option value="05">Mei</option>
+                    <option value="06">Juni</option>
+                    <option value="07">Juli</option>
+                    <option value="08">Agustus</option>
+                    <option value="09">September</option>
+                    <option value="10">Oktober</option>
+                    <option value="11">November</option>
+                    <option value="12">Desember</option>
+                  </select>
+
+                  {/* Dropdown Tahun (Dinamis Otomatis) */}
+                  <select
+                    value={grafikFilterTahun}
+                    onChange={(e) => setGrafikFilterTahun(e.target.value)}
+                    className="bg-slate-50 border border-slate-200 rounded px-2 py-0.5 text-[10px] font-semibold text-slate-600 focus:outline-none cursor-pointer"
+                  >
+                    <option value="SEMUA">Semua Tahun</option>
+                    {availableYears.map((tahun) => (
+                      <option key={tahun} value={tahun.toString()}>
+                        {tahun}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div> 
               <p className="text-xs text-slate-400 mb-3">Distribusi frekuensi laporan per unit RTG terkini</p>
 
-              <div className="relative pl-7 pr-2 pt-3 pb-10 h-52 sm:h-56 border-b border-l border-slate-300">
-                <div className="absolute left-0 top-0 bottom-10 flex flex-col justify-between text-[10px] font-semibold text-slate-400 pr-1 text-right w-6">
-                  <span>{maxVal}</span>
-                  <span>{Math.round(maxVal / 2)}</span>
-                  <span>0</span>
+              <div className="flex">
+                {/* Label sumbu Y: posisi pakai persen yang SAMA dengan gridline */}
+                <div className="relative h-48 w-7 shrink-0 mt-5">
+                  {yTicks.map((t) => (
+                    <span
+                      key={t}
+                      style={{ bottom: `${(t / yMax) * 100}%` }}
+                      className="absolute right-2 translate-y-1/2 text-[10px] font-semibold leading-none text-slate-400"
+                    >
+                      {t}
+                    </span>
+                  ))}
                 </div>
 
-                <div className="absolute left-6 right-0 top-3 border-b border-dashed border-slate-200"></div>
-                <div className="absolute left-6 right-0 top-1/2 border-b border-dashed border-slate-200"></div>
+                {/* Area scroll horizontal (kalau unit RTG banyak) */}
+                <div className="flex-1 min-w-0 overflow-x-auto">
+                  <div className="min-w-full w-max pt-5">
+                    {/* Plot area */}
+                    <div className="relative h-48 border-l border-b border-slate-300">
+                      {/* Gridline putus-putus */}
+                      {yTicks.slice(1).map((t) => (
+                        <div
+                          key={t}
+                          style={{ bottom: `${(t / yMax) * 100}%` }}
+                          className="absolute left-0 right-0 border-t border-dashed border-slate-200"
+                        />
+                      ))}
 
-                <div className="flex items-end justify-between gap-2 h-full w-full relative z-10 overflow-x-auto pb-8">
-                  {chartData.length === 0 ? (
-                    <div className="w-full text-center text-xs text-slate-400 my-auto">
-                      Belum ada laporan kendala
-                    </div>
-                  ) : (
-                    chartData.map((bar, idx) => {
-                      const barHeightPercent = Math.max(15, Math.round((bar.value / maxVal) * 100));
-
-                      return (
-                        <div key={idx} className="flex-1 flex flex-col items-center h-full justify-end min-w-[36px] relative">
-                          <span className="text-[10px] text-slate-700 font-bold mb-1">{bar.value}</span>
-                          <div
-                            style={{ height: `${barHeightPercent}%` }}
-                            className="w-full max-w-[22px] bg-[#0e5c75] rounded-t-sm hover:bg-emerald-500 transition-all duration-300 shadow-sm"
-                          ></div>
-                          <div className="absolute -bottom-7 left-1/2 -translate-x-1/2 flex flex-col items-center w-full">
-                            <span className="text-[9px] font-bold text-slate-700 whitespace-nowrap">
-                              {bar.label.includes("RTG") ? bar.label : `RTG ${bar.label}`}
-                            </span>
-                          </div>
+                      {chartData.length === 0 ? (
+                        <div className="absolute inset-0 flex items-center justify-center text-xs text-slate-400">
+                          Belum ada laporan kendala
                         </div>
-                      );
-                    })
-                  )}
+                      ) : (
+                        <div className="relative z-10 flex h-full items-end justify-around gap-4 px-3">
+                          {chartData.map((bar) => (
+                            <div
+                              key={bar.label}
+                              className="flex h-full w-12 shrink-0 items-end justify-center"
+                            >
+                              <div
+                                style={{ height: `${(bar.value / yMax) * 100}%` }}
+                                className="relative w-6 rounded-t bg-[#0e5c75] transition-all duration-300 hover:bg-emerald-500"
+                              >
+                                {/* Angka kasus nempel di atas batang */}
+                                <span className="absolute -top-4 left-1/2 -translate-x-1/2 text-[10px] font-bold text-slate-700">
+                                  {bar.value}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Label sumbu X: baris terpisah di bawah garis sumbu, lebar kolom sama dengan batang */}
+                    {chartData.length > 0 && (
+                      <div className="flex justify-around gap-4 px-3 pt-2">
+                        {chartData.map((bar) => (
+                          <span
+                            key={bar.label}
+                            className="w-12 shrink-0 truncate text-center text-[10px] font-bold text-slate-700"
+                          >
+                            {bar.label.includes("RTG") ? bar.label : `RTG ${bar.label}`}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
