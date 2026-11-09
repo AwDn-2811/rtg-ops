@@ -71,7 +71,7 @@ interface UserProfile {
   is_active: boolean;
 }
 
-export default function DashboardPage() {
+export default function DasboardPage() {
   const router = useRouter();
   const pathname = usePathname();
   const [reports, setReports] = useState<Report[]>([]);
@@ -87,7 +87,7 @@ export default function DashboardPage() {
   const [rtgLoading, setRtgLoading] = useState(true);
   const [selectedRtgFilter, setSelectedRtgFilter] = useState("SEMUA");
 
-  // State untuk Filter Periode Tanggal
+  // State untuk Filter Periode Tanggal (di bagian atas komponen)
   const [filterTanggal, setFilterTanggal] = useState<string>("");
   const [filterBulan, setFilterBulan] = useState<string>("SEMUA");
   const [filterTahun, setFilterTahun] = useState<string>("SEMUA");
@@ -155,7 +155,7 @@ export default function DashboardPage() {
         const allowedRoles = ["admin", "mcc", "operator", "teknisi"];
 
         if (!allowedRoles.includes(profile.role)) {
-          router.replace("/dashboard");
+          router.replace("/dasboard");
           return;
         }
 
@@ -179,8 +179,10 @@ export default function DashboardPage() {
     };
   }, [router, supabase]);
 
+  // 2. Buat daftar unit RTG unik secara dinamis dari rtgStatuses
   const uniqueRtgUnits = Array.from(new Set(rtgStatuses.map((u) => u.unit_code))).sort();
 
+  // Fetch User Profiles untuk Admin
   const fetchUserProfiles = async () => {
     const { data, error } = await supabase
       .from("profiles")
@@ -198,6 +200,7 @@ export default function DashboardPage() {
     fetchUserProfiles();
   };
 
+  // Fungsi Tambah User Baru
   const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUserEmail || !newUserPassword || !newUserName || !newUserEmployeeId) {
@@ -297,15 +300,20 @@ export default function DashboardPage() {
     }
   };
 
+
+  // Realtime Supabase Query RTG Status & Laporan Kerusakan
   const fetchRealtimeDashboardData = async () => {
     try {
+      // 1. Ambil data status RTG dari Supabase
       const { data: statusData, error: statusError } = await supabase
+
         .from("rtg_statuses")
         .select("id, unit_code, status, block, last_updated")
         .order("unit_code", { ascending: true });
 
       if (statusError) throw statusError;
 
+      // 2. Ambil data laporan rtg_reports beserta work_orders terkait
       const { data: reportData, error: reportError } = await supabase
         .from("rtg_reports")
         .select(`
@@ -337,11 +345,13 @@ export default function DashboardPage() {
       if (reportError) console.error("Report fetch error:", reportError.message);
 
       if (statusData) {
+        // Gabungkan data status RTG dengan status laporan yang sedang aktif
         const mappedStatuses = statusData.map((unit) => {
           const activeReports = reportData?.filter(
             (r: any) => r.rtg_id === unit.id || r.rtg_statuses?.unit_code === unit.unit_code
           );
 
+          // Cari laporan terbaru yang statusnya belum SELESAI / DONE / REJECTED
           const latestActive = activeReports?.find((r: any) => {
             const vStatus = r.verification_status?.toUpperCase();
             const wo = Array.isArray(r.work_orders) ? r.work_orders[0] : r.work_orders;
@@ -359,6 +369,7 @@ export default function DashboardPage() {
         setRtgStatuses(mappedStatuses);
       }
 
+      // Format daftar laporan untuk tabel dashboard
       if (reportData) {
         const formattedReports: Report[] = reportData.map((item: any) => {
           const dateObj = new Date(item.report_date || item.created_at);
@@ -429,6 +440,7 @@ export default function DashboardPage() {
   useEffect(() => {
     fetchRealtimeDashboardData();
 
+    // Subscribe realtime listeners ke 3 tabel terkait
     const statusChannel = supabase
       .channel("dashboard_realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "rtg_statuses" }, () => fetchRealtimeDashboardData())
@@ -444,6 +456,8 @@ export default function DashboardPage() {
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [showDetailModal, setShowDetailModal] = useState(false);
 
+  // Filter Laporan
+
   const filteredReports = reports.filter((r) => {
     const matchesSearch =
       r.rtg.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -451,32 +465,39 @@ export default function DashboardPage() {
       r.praOperasi.toLowerCase().includes(searchTerm.toLowerCase()) ||
       r.pascaOperasi.toLowerCase().includes(searchTerm.toLowerCase());
 
+    // Filter per Unit RTG (jika pilih RTG tertentu, atau SEMUA)
     const matchesRtg =
       selectedRtgFilter === "SEMUA" ||
       r.rtg.toUpperCase() === selectedRtgFilter.toUpperCase();
 
-    const matchesTanggalSpesifik = !filterTanggal || (() => {
-      const selectedDate = new Date(filterTanggal);
-      const itemDate = new Date(r.tanggal); 
-      return (
-        selectedDate.getFullYear() === itemDate.getFullYear() &&
-        selectedDate.getMonth() === itemDate.getMonth() &&
-        selectedDate.getDate() === itemDate.getDate()
-      );
-    })();
+      // Konversi string tanggal dari data report ke format ISO/Date untuk perbandingan
+      // r.tanggal bentuknya misal: "09 Nov 2026"
+      const matchesTanggalSpesifik = !filterTanggal || (() => {
+        // filterTanggal formatnya YYYY-MM-DD dari <input type="date">
+        const selectedDate = new Date(filterTanggal);
+        const itemDate = new Date(r.tanggal); 
+        return (
+          selectedDate.getFullYear() === itemDate.getFullYear() &&
+          selectedDate.getMonth() === itemDate.getMonth() &&
+          selectedDate.getDate() === itemDate.getDate()
+        );
+      })();
 
-    const matchesBulan = filterBulan === "SEMUA" || (() => {
-      const itemDate = new Date(r.tanggal);
-      return (itemDate.getMonth() + 1).toString().padStart(2, "0") === filterBulan;
-    })();
 
-    const matchesTahun = filterTahun === "SEMUA" || (() => {
-      const itemDate = new Date(r.tanggal);
-      return itemDate.getFullYear().toString() === filterTahun;
-    })();
+      const matchesBulan = filterBulan === "SEMUA" || (() => {
+        const itemDate = new Date(r.tanggal);
+        return (itemDate.getMonth() + 1).toString().padStart(2, "0") === filterBulan;
+      })();
 
-    return matchesSearch && matchesRtg && matchesTanggalSpesifik && matchesBulan && matchesTahun;
-  });
+      const matchesTahun = filterTahun === "SEMUA" || (() => {
+        const itemDate = new Date(r.tanggal);
+        return itemDate.getFullYear().toString() === filterTahun;
+      })();
+
+      return matchesSearch && matchesRtg && matchesTanggalSpesifik && matchesBulan && matchesTahun;
+    });
+
+  // PEMETAAN COLOR-CODING REALTIME UNTUK CARD RTG (Kuning, Biru, Ungu, Hijau)
 
   const rtgUnits = rtgStatuses.map((item) => {
     const rep = item.activeReport;
@@ -485,14 +506,15 @@ export default function DashboardPage() {
     const woStatus = wo?.status?.toUpperCase();
 
     let statusType: "NORMAL" | "PENDING_MCC" | "ON_PROGRESS" | "WAITING_PART" = "NORMAL";
+    ariaLabel: "Status Unit RTG";
 
     if (rep) {
       if (vStatus === "PENDING") {
-        statusType = "PENDING_MCC";
+        statusType = "PENDING_MCC"; // KUNING
       } else if (woStatus === "ON_PROGRESS" || woStatus === "IN_PROGRESS" || woStatus === "ASSIGNED") {
-        statusType = "ON_PROGRESS";
+        statusType = "ON_PROGRESS"; // BIRU
       } else if (woStatus === "WAITING_PART") {
-        statusType = "WAITING_PART";
+        statusType = "WAITING_PART"; // UNGU
       }
     }
 
@@ -529,11 +551,11 @@ export default function DashboardPage() {
     };
   });
 
-  const totalKuning = rtgUnits.filter((u) => u.status === "PENDING_MCC").length;
-  const totalBiru = rtgUnits.filter((u) => u.status === "ON_PROGRESS").length;
-  const totalUngu = rtgUnits.filter((u) => u.status === "WAITING_PART").length;
-  const totalNormal = rtgUnits.filter((u) => u.status === "NORMAL").length;
-  const totalPerbaikan = totalKuning + totalBiru + totalUngu;
+    const totalKuning = rtgUnits.filter((u) => u.status === "PENDING_MCC").length;
+    const totalBiru = rtgUnits.filter((u) => u.status === "ON_PROGRESS").length;
+    const totalUngu = rtgUnits.filter((u) => u.status === "WAITING_PART").length;
+    const totalNormal = rtgUnits.filter((u) => u.status === "NORMAL").length;
+    const totalPerbaikan = totalKuning + totalBiru + totalUngu;
 
   const handleCardClick = (unit: RTGCardItem) => {
     setSelectedRtgCard(unit);
@@ -621,6 +643,26 @@ export default function DashboardPage() {
     );
   };
 
+  const clearData = async () => {
+    if (confirm("Apakah Anda yakin ingin mengosongkan semua data laporan? Status RTG akan kembali READY.")) {
+      setReports([]);
+
+      try {
+        const { error } = await supabase
+          .from("rtg_statuses")
+          .update({ status: "READY", last_updated: new Date().toISOString() })
+          .neq("id", 0);
+
+        if (error) {
+          console.error("Gagal memperbarui status Supabase:", error.message);
+        }
+        fetchRealtimeDashboardData();
+      } catch (err) {
+        console.error("Database update error:", err);
+      }
+    }
+  };
+
   if (profileLoading || !role) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-100">
@@ -696,7 +738,7 @@ export default function DashboardPage() {
                   : "text-slate-300 hover:text-white"
               }`}
             >
-              Dashboard
+              Dasboard
             </Link>
           )}
 
@@ -845,76 +887,7 @@ export default function DashboardPage() {
         </div>
       </header>
 
-      {/* Navigasi Hamburger Menu Mobile */}
-      {mobileMenuOpen && (
-        <div className="lg:hidden bg-[#082e2e] text-white px-4 py-3 border-t border-emerald-800/40 space-y-2 shadow-xl z-50">
-          <div className="px-3 py-1 mb-2 bg-[#051e1e] rounded text-[10px] text-emerald-300 font-mono flex justify-between items-center">
-            <span>Role Login:</span>
-            <span className="uppercase font-bold text-white">{role || "GUEST"}</span>
-          </div>
-
-          {(role?.toUpperCase() === "ADMIN" || role?.toUpperCase() === "OPERATOR") && (
-            <Link
-              href="/form-pelaporan"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
-                pathname === "/form-pelaporan" ? "bg-white text-[#0b3c3c]" : "text-slate-200 hover:bg-[#104848]"
-              }`}
-            >
-              Form Pelaporan
-            </Link>
-          )}
-
-          {(role?.toUpperCase() === "ADMIN" || role?.toUpperCase() === "MCC") && (
-            <Link
-              href="/verifikasi-mcc"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
-                pathname === "/verifikasi-mcc" ? "bg-white text-[#0b3c3c]" : "text-slate-200 hover:bg-[#104848]"
-              }`}
-            >
-              Approval MCC
-            </Link>
-          )}
-
-          {(role?.toUpperCase() === "ADMIN" || role?.toUpperCase() === "TEKNISI" || role?.toUpperCase() === "MCC") && (
-            <Link
-              href="/dashboard"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
-                pathname === "/dashboard" ? "bg-white text-[#0b3c3c]" : "text-slate-200 hover:bg-[#104848]"
-              }`}
-            >
-              Dashboard
-            </Link>
-          )}
-
-          {(role?.toUpperCase() === "ADMIN" || role?.toUpperCase() === "TEKNISI") && (
-            <Link
-              href="/penanganan-teknis"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
-                pathname === "/penanganan-teknis" ? "bg-white text-[#0b3c3c]" : "text-slate-200 hover:bg-[#104848]"
-              }`}
-            >
-              Penanganan Teknisi
-            </Link>
-          )}
-
-          {(role?.toUpperCase() === "ADMIN" || role?.toUpperCase() === "MCC") && (
-            <Link
-              href="/audit-log"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
-                pathname === "/audit-log" ? "bg-white text-[#0b3c3c]" : "text-slate-200 hover:bg-[#104848]"
-              }`}
-            >
-              Audit Log
-            </Link>
-          )}
-        </div>
-      )}
-
+    
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 mt-4 sm:mt-6 space-y-4 sm:space-y-6">
         {/* Banner Utama */}
@@ -983,7 +956,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* STATUS UNIT RTG GRID REALTIME */}
+        {/* STATUS UNIT RTG GRID REALTIME (Kuning, Biru, Ungu, Hijau) */}
         <div className="bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-sm">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-4">
             <div>
@@ -991,6 +964,7 @@ export default function DashboardPage() {
               <p className="text-[11px] sm:text-xs text-slate-400">Pemetaan status unit secara live (Klik unit untuk rincian detail)</p>
             </div>
 
+            {/* LEGENDARIS WARNA STATUS */}
             <div className="flex flex-wrap items-center gap-3 text-xs font-medium">
               <span className="flex items-center space-x-1">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
@@ -1017,6 +991,7 @@ export default function DashboardPage() {
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2.5 sm:gap-3">
             {rtgUnits.map((item) => {
+              // Tentukan style CSS berdasarkan statusnya
               let cardBg = "bg-emerald-50/50 border-slate-200 hover:border-emerald-500 text-slate-800";
               let badgeStyle = "bg-emerald-100 text-emerald-700";
               let badgeText = "NORMAL";
@@ -1049,6 +1024,7 @@ export default function DashboardPage() {
                   </div>
                   <p className={`text-[9px] sm:text-[10px] mt-1.5 truncate font-medium ${
                     item.status !== "NORMAL" ? "font-semibold" : "text-slate-400"
+
                   }`}>
                     {item.sub}
                   </p>
@@ -1159,6 +1135,7 @@ export default function DashboardPage() {
                 <h3 className="font-bold text-sm text-slate-800">Histori Laporan Kendala Unit RTG</h3>
                 
                 <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                  {/* 1. Date Picker untuk Pilih Tanggal Spesifik */}
                   <div className="flex items-center space-x-1 bg-slate-50 border border-slate-200 rounded-md px-2 py-1">
                     <span className="text-[10px] text-slate-400 font-bold">Periode:</span>
                     <input
@@ -1166,6 +1143,7 @@ export default function DashboardPage() {
                       value={filterTanggal}
                       onChange={(e) => {
                         setFilterTanggal(e.target.value);
+                        // Reset bulan/tahun jika tanggal spesifik dipilih
                         if (e.target.value) {
                           setFilterBulan("SEMUA");
                           setFilterTahun("SEMUA");
@@ -1175,6 +1153,7 @@ export default function DashboardPage() {
                     />
                   </div>
 
+                  {/* Tombol Reset Filter Tanggal */}
                   {(filterTanggal || filterBulan !== "SEMUA" || filterTahun !== "SEMUA") && (
                     <button
                       onClick={() => {
@@ -1188,6 +1167,7 @@ export default function DashboardPage() {
                     </button>
                   )}
 
+                  {/* Search Input Tiket */}
                   <div className="relative flex-1 sm:flex-initial">
                     <Search className="absolute left-2.5 top-2 text-slate-400" size={14} />
                     <input 
@@ -1198,9 +1178,10 @@ export default function DashboardPage() {
                       className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-md text-xs focus:outline-none" 
                     />
                   </div>
-                </div>
               </div>
+          </div>
 
+              {/* Filter Per-Unit RTG & Status Histori */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
                 <div className="flex items-center space-x-1.5 overflow-x-auto pb-1.5 max-w-full">
                   <span className="text-[11px] font-bold text-slate-400 mr-1 shrink-0">Filter Unit:</span>
@@ -1231,6 +1212,7 @@ export default function DashboardPage() {
                   ))}
                 </div>
 
+                {/* Info Indikator Histori */}
                 {selectedRtgFilter !== "SEMUA" && (
                   <span className="text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2.5 py-1 rounded-md border border-emerald-200 shrink-0">
                     Histori Laporan: {selectedRtgFilter} ({filteredReports.length} Tiket)
@@ -1238,6 +1220,7 @@ export default function DashboardPage() {
                 )}
               </div>
 
+              {/* Tabel Data */}
               <div className="overflow-x-auto max-h-[380px] overflow-y-auto border border-slate-100 rounded-lg">
                 <table className="w-full text-left text-xs relative min-w-[500px] sm:min-w-full">
                   <thead className="sticky top-0 bg-slate-100 text-slate-600 font-bold z-10 shadow-sm">
@@ -1722,60 +1705,7 @@ export default function DashboardPage() {
                 ))}
               </div>
 
-              <div className="max-h-56 overflow-y-auto divide-y divide-slate-100 border border-slate-200 rounded-xl">
-                {userList.filter((u) => u.role === selectedRoleTab).length === 0 ? (
-                  <div className="p-4 text-center text-xs text-slate-400 italic">
-                    Belum ada user terdaftar dalam role {selectedRoleTab.toUpperCase()}.
-                  </div>
-                ) : (
-                  userList
-                    .filter((u) => u.role === selectedRoleTab)
-                    .map((usr) => (
-                      <div key={usr.id} className="p-3 flex justify-between items-center hover:bg-slate-50 text-xs">
-                        <div className="flex items-center space-x-3">
-                          <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-700 font-bold flex items-center justify-center text-xs">
-                            {usr.full_name?.charAt(0) || "U"}
-                          </div>
-                          <div>
-                            <div className="flex items-center space-x-2">
-                              <p className="font-bold text-slate-800">{usr.full_name}</p>
-                              <span className="bg-slate-100 text-slate-600 font-mono text-[9px] px-1.5 py-0.2 rounded border border-slate-200">
-                                {usr.employee_id || "NO-ID"}
-                              </span>
-                            </div>
-                            <p className="text-[10px] text-slate-400">Role: <span className="uppercase font-semibold">{usr.role}</span></p>
-                          </div>
-                        </div>
 
-                        <div className="flex items-center space-x-2">
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                            usr.is_active ? "bg-emerald-100 text-emerald-700" : "bg-red-100 text-red-600"
-                          }`}>
-                            {usr.is_active ? "Aktif" : "Non-Aktif"}
-                          </span>
-                          
-                          {role === "admin" && (
-                            <button
-                              onClick={() => handleStartEdit(usr)}
-                              className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[11px] font-semibold transition cursor-pointer"
-                            >
-                              Edit
-                            </button>
-                          )}
-
-                          {role === "admin" && !usr.is_active && (
-                            <button
-                              onClick={() => handleDeleteUser(usr.id, usr.full_name)}
-                              className="p-1.5 bg-red-50 hover:bg-red-100 text-red-600 rounded-lg transition cursor-pointer"
-                              title="Hapus Permanen User Non-Aktif"
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    ))
-                )}
               </div>
             </div>
 
@@ -1788,7 +1718,6 @@ export default function DashboardPage() {
               </button>
             </div>
           </div>
-        </div>
       )}
 
       {/* Footer */}
