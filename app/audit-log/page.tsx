@@ -163,7 +163,7 @@ export default function AuditLogPage() {
 
           <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center shrink-0">
             <img
-              src="/images/logopelindo.png"
+              src="/images/logopelindo.webp"
               alt="Logo Pelindo"
               width={48}
               height={48}

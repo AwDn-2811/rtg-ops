@@ -76,6 +76,13 @@ export default function ApprovalMCCPage() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
 
+  // State menampung profil pengguna yang sedang login dari Supabase
+  const [currentUserProfile, setCurrentUserProfile] = useState<{
+    full_name: string;
+    employee_id: string;
+    role: string;
+  } | null>(null);
+
   const [showNotif, setShowNotif] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
@@ -101,11 +108,12 @@ export default function ApprovalMCCPage() {
           return;
         }
 
-        const { data: profile, error: profileError } = await supabase
-          .from("profiles")
-          .select("role, is_active")
-          .eq("id", user.id)
-          .single();
+        const { data: profile, error: profileError } = 
+          await supabase
+            .from("profiles")
+            .select("full_name, employee_id, role, is_active")
+            .eq("id", user.id)
+            .single();
 
         if (profileError || !profile || !profile.is_active) {
           await supabase.auth.signOut();
@@ -121,8 +129,13 @@ export default function ApprovalMCCPage() {
 
         if (isMounted) {
           setRole(profile.role);
-          setCurrentUserId(user.id);
+          setCurrentUserProfile({
+            full_name: profile.full_name || "User RTG-ops",
+            employee_id: profile.employee_id || "-",
+            role: profile.role,
+          });
         }
+
       } catch (error) {
         console.error("Gagal memeriksa akses:", error);
         router.replace("/");
@@ -657,6 +670,7 @@ export default function ApprovalMCCPage() {
             )}
           </div>
 
+          {/* Profile Pop-up */}
           <div className="relative">
             <button
               onClick={() => {
@@ -664,38 +678,55 @@ export default function ApprovalMCCPage() {
                 setShowNotif(false);
                 setMobileMenuOpen(false);
               }}
-              className="flex items-center space-x-2 sm:space-x-2.5 bg-[#134e4e] hover:bg-[#185d5d] px-2.5 sm:px-3.5 py-1.5 rounded-full text-xs transition border border-emerald-700/50 cursor-pointer"
+              className="flex items-center space-x-2 sm:space-x-3 bg-[#134e4e] hover:bg-[#185d5d] px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs transition border border-emerald-700/50 cursor-pointer"
             >
-              <div className="p-1 bg-emerald-500 rounded-full text-white">
-                <User size={14} />
+              <div className="p-1 bg-emerald-500 rounded-full text-white font-bold text-[10px] w-6 h-6 flex items-center justify-center">
+                {currentUserProfile?.full_name?.charAt(0)?.toUpperCase() || "U"}
               </div>
               <div className="text-left leading-tight hidden sm:block">
-                <p className="font-semibold text-white text-[11px]">Supervisi Lapangan</p>
-                <p className="text-[9px] text-emerald-200">Shift A • Pier 2</p>
+                <p className="font-semibold text-white text-xs">
+                  {currentUserProfile?.full_name || "Memuat..."}
+                </p>
+                <p className="text-[10px] text-emerald-200">
+                  Role: <span className="uppercase font-bold">{currentUserProfile?.role || role}</span>
+                </p>
               </div>
             </button>
+
             {showProfile && (
               <div className="absolute right-0 mt-3 w-64 bg-white text-slate-800 rounded-xl shadow-xl border border-slate-200 overflow-hidden z-50 p-4 space-y-3">
                 <div className="flex items-center space-x-3 border-b border-slate-100 pb-3">
-                  <div className="w-10 h-10 rounded-full bg-[#0b3c3c] text-white flex items-center justify-center font-bold text-sm">MC</div>
-                  <div>
-                    <h4 className="font-bold text-xs text-slate-800">Operator MCC</h4>
-                    <p className="text-[10px] text-slate-400">ID MCC: #MCC-8821</p>
+                  <div className="w-10 h-10 rounded-full bg-[#0b3c3c] text-white flex items-center justify-center font-bold text-sm">
+                    {currentUserProfile?.full_name?.charAt(0)?.toUpperCase() || "U"}
+                  </div>
+                  <div className="overflow-hidden">
+                    <h4 className="font-bold text-xs text-slate-800 truncate">
+                      {currentUserProfile?.full_name || "User Terminal"}
+                    </h4>
+                    <p className="text-[10px] text-slate-400 font-mono">
+                      ID: {currentUserProfile?.employee_id || "-"}
+                    </p>
                   </div>
                 </div>
 
-                <div className="space-y-1.5 text-xs">
-                  <div className="flex justify-between text-slate-600">
-                    <span>Shift Tugas:</span>
-                    <span className="font-semibold text-slate-800">Shift A (07:00 - 15:00)</span>
+                <div className="space-y-2 text-xs">
+                  <div className="flex justify-between items-center text-slate-600">
+                    <span>Nama Lengkap:</span>
+                    <span className="font-semibold text-slate-800 truncate max-w-[120px]">
+                      {currentUserProfile?.full_name}
+                    </span>
                   </div>
-                  <div className="flex justify-between text-slate-600">
-                    <span>Area Pengawasan:</span>
-                    <span className="font-semibold text-slate-800">Pier 2 Dermaga</span>
+                  <div className="flex justify-between items-center text-slate-600">
+                    <span>ID Pegawai:</span>
+                    <span className="font-mono font-bold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded text-[10px]">
+                      {currentUserProfile?.employee_id}
+                    </span>
                   </div>
-                  <div className="flex justify-between text-slate-600">
-                    <span>Status TOS:</span>
-                    <span className="text-emerald-600 font-semibold">Terhubung</span>
+                  <div className="flex justify-between items-center text-slate-600">
+                    <span>Role Akses:</span>
+                    <span className="font-bold text-[#0b3c3c] uppercase bg-emerald-50 px-2 py-0.5 rounded text-[10px] border border-emerald-200">
+                      {currentUserProfile?.role}
+                    </span>
                   </div>
                 </div>
 
