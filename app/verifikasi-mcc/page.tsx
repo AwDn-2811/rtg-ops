@@ -746,9 +746,21 @@ export default function ApprovalMCCPage() {
     {/* DROPDOWN NAVIGASI HAMBURGER MENU (KHUSUS MOBILE) */}
       {mobileMenuOpen && (
         <div className="lg:hidden bg-[#082e2e] text-white px-4 py-3 border-b border-emerald-800/40 space-y-2 shadow-lg animate-in slide-in-from-top duration-200">
-          <div className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider px-3 pb-1 border-b border-emerald-900/50">
-            Menu Navigasi MCC
-          </div>
+
+          {(role === "admin" || role === "operator") && (
+            <Link
+              href="/form-pelaporan"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
+                pathname === "/form-pelaporan"
+
+                  ? "bg-white text-[#0b3c3c] font-bold"
+                  : "text-slate-200 hover:bg-[#134e4e]"
+              }`}
+            >
+              Form Pelaporan
+            </Link>
+          )}
 
           {(role === "admin" || role === "mcc") && (
             <Link
@@ -771,6 +783,20 @@ export default function ApprovalMCCPage() {
               }`}
             >
               Dashboard
+            </Link>
+          )}
+
+          {(role === "admin" || role === "teknisi") && (
+            <Link
+              href="/penanganan-teknis"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
+                pathname === "/penanganan-teknis"
+                  ? "bg-white text-[#0b3c3c] font-bold"
+                  : "text-slate-200 hover:bg-[#134e4e]"
+              }`}
+            >
+              Penanganan Teknisi
             </Link>
           )}
 
