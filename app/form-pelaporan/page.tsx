@@ -618,6 +618,81 @@ export default function FormPelaporanPage() {
         </div>
       </header>
 
+      {/* DROPDOWN MENU MOBILE (MENU HAMBURGER) */}
+      {mobileMenuOpen && (
+        <div className="lg:hidden bg-[#082e2e] text-white px-4 py-3 space-y-2 border-b border-emerald-900/50 animate-in slide-in-from-top-2 duration-200 relative z-40">
+          {(role === "admin" || role === "operator") && (
+            <Link
+              href="/form-pelaporan"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
+                pathname === "/form-pelaporan"
+                  ? "bg-white text-[#0b3c3c] font-bold"
+                  : "text-slate-200 hover:bg-[#134e4e]"
+              }`}
+            >
+              Form Pelaporan
+            </Link>
+          )}
+
+          {(role === "admin" || role === "mcc") && (
+            <Link
+              href="/verifikasi-mcc"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
+                pathname === "/verifikasi-mcc"
+                  ? "bg-white text-[#0b3c3c] font-bold"
+                  : "text-slate-200 hover:bg-[#134e4e]"
+              }`}
+            >
+              Approval MCC
+            </Link>
+          )}
+
+          {(role === "admin" || role === "mcc" || role === "teknisi") && (
+            <Link
+              href="/dasboard"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
+                pathname === "/dasboard"
+                  ? "bg-white text-[#0b3c3c] font-bold"
+                  : "text-slate-200 hover:bg-[#134e4e]"
+              }`}
+            >
+              Dashboard
+            </Link>
+          )}
+
+          {(role === "admin" || role === "teknisi") && (
+            <Link
+              href="/penanganan-teknis"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
+                pathname === "/penanganan-teknis"
+                  ? "bg-white text-[#0b3c3c] font-bold"
+                  : "text-slate-200 hover:bg-[#134e4e]"
+              }`}
+            >
+              Penanganan Teknisi
+            </Link>
+          )}
+
+          {(role === "admin" || role === "mcc") && (
+            <Link
+              href="/audit-log"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
+                pathname === "/audit-log"
+                  ? "bg-white text-[#0b3c3c] font-bold"
+                  : "text-slate-200 hover:bg-[#134e4e]"
+              }`}
+            >
+              Audit Log
+            </Link>
+          )}
+        </div>
+      )}
+
       {/* Main Form */}
       <main className="max-w-5xl mx-auto mt-6 px-4">
         <div className="bg-white rounded-2xl p-4 sm:p-8 border border-slate-200 shadow-sm space-y-6">
