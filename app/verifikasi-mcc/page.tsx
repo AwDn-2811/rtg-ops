@@ -614,7 +614,7 @@ export default function ApprovalMCCPage() {
           )}
           <Link href="/dasboard" className={`px-5 py-2 rounded-full transition font-semibold ${pathname === "/dasboard" ? "bg-white text-[#0b3c3c] shadow" : "text-slate-300 hover:text-white"}`}>Dashboard</Link>
           {(role === "admin" || role === "teknisi") && (
-            <Link href="/penanganan-teknis" className={`px-5 py-2 rounded-full transition font-semibold ${pathname === "/penanganan-teknis" ? "bg-white text-[#0b3c3c] shadow" : "text-slate-300 hover:text-white"}`}>Penanganan Teknisi</Link>
+            <Link href="//penanganan-teknisi" className={`px-5 py-2 rounded-full transition font-semibold ${pathname === "/penanganan-teknis" ? "bg-white text-[#0b3c3c] shadow" : "text-slate-300 hover:text-white"}`}>Penanganan Teknisi</Link>
           )}
 
           {(role === "admin" || role === "mcc") && (
@@ -743,60 +743,34 @@ export default function ApprovalMCCPage() {
         </div>
       </header>
 
-      {/* DROPDOWN NAVIGASI HAMBURGER MENU (KHUSUS MOBILE) */}
+    {/* DROPDOWN NAVIGASI HAMBURGER MENU (KHUSUS MOBILE) */}
       {mobileMenuOpen && (
         <div className="lg:hidden bg-[#082e2e] text-white px-4 py-3 border-b border-emerald-800/40 space-y-2 shadow-lg animate-in slide-in-from-top duration-200">
-          {(role === "admin" || role === "operator") && (
-            <Link
-              href="/form-pelaporan"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
-                pathname === "/form-pelaporan"
-                  ? "bg-white text-[#0b3c3c]"
-                  : "text-slate-200 hover:bg-[#104848]"
-              }`}
-            >
-              Form Pelaporan
-            </Link>
-          )}
+          <div className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider px-3 pb-1 border-b border-emerald-900/50">
+            Menu Navigasi MCC
+          </div>
 
           {(role === "admin" || role === "mcc") && (
             <Link
               href="/verifikasi-mcc"
               onClick={() => setMobileMenuOpen(false)}
               className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
-                pathname === "/verifikasi-mcc"
-                  ? "bg-white text-[#0b3c3c]"
-                  : "text-slate-200 hover:bg-[#104848]"
+                pathname === "/verifikasi-mcc" ? "bg-white text-[#0b3c3c]" : "text-slate-200 hover:bg-[#104848]"
               }`}
             >
               Approval MCC
             </Link>
           )}
 
-          <Link
-            href="/dasboard"
-            onClick={() => setMobileMenuOpen(false)}
-            className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
-              pathname === "/dasboard"
-                ? "bg-white text-[#0b3c3c]"
-                : "text-slate-200 hover:bg-[#104848]"
-            }`}
-          >
-            Dashboard
-          </Link>
-
-          {(role === "admin" || role === "teknisi") && (
+          {(role === "admin" || role === "mcc" || role === "teknisi") && (
             <Link
-              href="/penanganan-teknis"
+              href="/dasboard"
               onClick={() => setMobileMenuOpen(false)}
               className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
-                pathname === "/penanganan-teknis"
-                  ? "bg-white text-[#0b3c3c]"
-                  : "text-slate-200 hover:bg-[#104848]"
+                pathname === "/dasboard" ? "bg-white text-[#0b3c3c]" : "text-slate-200 hover:bg-[#104848]"
               }`}
             >
-              Penanganan Teknisi
+              Dashboard
             </Link>
           )}
 
@@ -815,7 +789,7 @@ export default function ApprovalMCCPage() {
           )}
         </div>
       )}
-
+      
       {/* Main Container */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 mt-4 sm:mt-6 space-y-4 sm:space-y-5">
 

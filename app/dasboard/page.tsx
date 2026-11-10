@@ -76,6 +76,7 @@ export default function DashboardPage() {
   const pathname = usePathname();
   const [reports, setReports] = useState<Report[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedKategoriFilter, setSelectedKategoriFilter] = useState("SEMUA");
   const [showNotif, setShowNotif] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
 
@@ -85,12 +86,6 @@ export default function DashboardPage() {
   // State RTG Status Supabase Realtime
   const [rtgStatuses, setRtgStatuses] = useState<RTGStatus[]>([]);
   const [rtgLoading, setRtgLoading] = useState(true);
-  const [selectedRtgFilter, setSelectedRtgFilter] = useState("SEMUA");
-
-  // State untuk Filter Periode Tanggal (di bagian atas komponen)
-  const [filterTanggal, setFilterTanggal] = useState<string>("");
-  const [filterBulan, setFilterBulan] = useState<string>("SEMUA");
-  const [filterTahun, setFilterTahun] = useState<string>("SEMUA");
 
   //state untuk filter grafik laporan per bulan
   const [grafikFilterBulan, setGrafikFilterBulan] = useState<string>("SEMUA");
@@ -199,9 +194,6 @@ export default function DashboardPage() {
       isMounted = false;
     };
   }, [router, supabase]);
-
-  // 2. Buat daftar unit RTG unik secara dinamis dari rtgStatuses
-  const uniqueRtgUnits = Array.from(new Set(rtgStatuses.map((u) => u.unit_code))).sort();
 
   // Fetch User Profiles untuk Admin
   const fetchUserProfiles = async () => {
@@ -484,36 +476,11 @@ export default function DashboardPage() {
       r.praOperasi.toLowerCase().includes(searchTerm.toLowerCase()) ||
       r.pascaOperasi.toLowerCase().includes(searchTerm.toLowerCase());
 
-    // Filter per Unit RTG (jika pilih RTG tertentu, atau SEMUA)
-    const matchesRtg =
-      selectedRtgFilter === "SEMUA" ||
-      r.rtg.toUpperCase() === selectedRtgFilter.toUpperCase();
+    const matchesKategori =
+      selectedKategoriFilter === "SEMUA" || r.kategori === selectedKategoriFilter;
 
-      // Konversi string tanggal dari data report ke format ISO/Date untuk perbandingan
-      // r.tanggal bentuknya misal: "09 Nov 2026"
-      const matchesTanggalSpesifik = !filterTanggal || (() => {
-        // filterTanggal formatnya YYYY-MM-DD dari <input type="date">
-        const selectedDate = new Date(filterTanggal);
-        const itemDate = new Date(r.tanggal); 
-        return (
-          selectedDate.getFullYear() === itemDate.getFullYear() &&
-          selectedDate.getMonth() === itemDate.getMonth() &&
-          selectedDate.getDate() === itemDate.getDate()
-        );
-      })();
-
-      const matchesBulan = filterBulan === "SEMUA" || (() => {
-        const itemDate = new Date(r.tanggal);
-        return (itemDate.getMonth() + 1).toString().padStart(2, "0") === filterBulan;
-      })();
-
-      const matchesTahun = filterTahun === "SEMUA" || (() => {
-        const itemDate = new Date(r.tanggal);
-        return itemDate.getFullYear().toString() === filterTahun;
-      })();
-
-      return matchesSearch && matchesRtg && matchesTanggalSpesifik && matchesBulan && matchesTahun;
-    });
+    return matchesSearch && matchesKategori;
+  });
 
   // PEMETAAN COLOR-CODING REALTIME UNTUK CARD RTG (Kuning, Biru, Ungu, Hijau)
   const rtgUnits = rtgStatuses.map((item) => {
@@ -568,11 +535,11 @@ export default function DashboardPage() {
     };
   });
 
-    const totalKuning = rtgUnits.filter((u) => u.status === "PENDING_MCC").length;
-    const totalBiru = rtgUnits.filter((u) => u.status === "ON_PROGRESS").length;
-    const totalUngu = rtgUnits.filter((u) => u.status === "WAITING_PART").length;
-    const totalNormal = rtgUnits.filter((u) => u.status === "NORMAL").length;
-    const totalPerbaikan = totalKuning + totalBiru + totalUngu;
+  const totalKuning = rtgUnits.filter((u) => u.status === "PENDING_MCC").length;
+  const totalBiru = rtgUnits.filter((u) => u.status === "ON_PROGRESS").length;
+  const totalUngu = rtgUnits.filter((u) => u.status === "WAITING_PART").length;
+  const totalNormal = rtgUnits.filter((u) => u.status === "NORMAL").length;
+  const totalPerbaikan = totalKuning + totalBiru + totalUngu;
 
   const handleCardClick = (unit: RTGCardItem) => {
     setSelectedRtgCard(unit);
@@ -933,6 +900,7 @@ export default function DashboardPage() {
         </div>
       </header>
 
+
       {/* DROPDOWN MENU MOBILE (MENU HAMBURGER) */}
       {mobileMenuOpen && (
         <div className="lg:hidden bg-[#082e2e] text-white px-4 py-3 space-y-2 border-b border-emerald-900/50 animate-in slide-in-from-top-2 duration-200 relative z-40">
@@ -1068,7 +1036,7 @@ export default function DashboardPage() {
 
           <div className="bg-white p-4 rounded-xl border border-slate-200 sm:col-span-2 md:col-span-1 flex justify-between items-start shadow-sm">
             <div>
-              <p className="text-xs text-slate-500 font-medium">Laporan Kendala</p>
+              <p className="text-xs text-slate-500 font-medium">Laporan Hari Ini</p>
               <h3 className="text-2xl font-bold mt-1 text-slate-800">{reports.length} <span className="text-xs font-normal text-slate-500">laporan masuk</span></h3>
               <p className="text-[11px] text-blue-600 mt-2 font-medium">Shift A & Shift B Terhubung</p>
             </div>
@@ -1147,6 +1115,15 @@ export default function DashboardPage() {
                   }`}>
                     {item.sub}
                   </p>
+                  {/* KODE COUNTING JUMLAH LAPORAN DI DALAM KOTAK UNIT */}
+                  {item.status !== "NORMAL" && (
+                    <div className="mt-2 pt-1.5 border-t border-black/10 flex justify-between items-center text-[9px]">
+                      <span className="text-slate-600 font-medium">Kendala Aktif:</span>
+                      <span className="font-extrabold bg-white/80 px-1.5 py-0.2 rounded text-red-600 shadow-2xs">
+                        {reports.filter(r => r.rtg === item.id).length} Tiket
+                      </span>
+                    </div>
+                  )}
                 </div>
               );
             })}
@@ -1319,42 +1296,8 @@ export default function DashboardPage() {
           <div className="lg:col-span-2 bg-white p-4 sm:p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
             <div>
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
-                <h3 className="font-bold text-sm text-slate-800">Histori Laporan Kendala Unit RTG</h3>
-                
-                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                  {/* 1. Date Picker untuk Pilih Tanggal Spesifik */}
-                  <div className="flex items-center space-x-1 bg-slate-50 border border-slate-200 rounded-md px-2 py-1">
-                    <span className="text-[10px] text-slate-400 font-bold">Periode:</span>
-                    <input
-                      type="date"
-                      value={filterTanggal}
-                      onChange={(e) => {
-                        setFilterTanggal(e.target.value);
-                        // Reset bulan/tahun jika tanggal spesifik dipilih
-                        if (e.target.value) {
-                          setFilterBulan("SEMUA");
-                          setFilterTahun("SEMUA");
-                        }
-                      }}
-                      className="bg-transparent text-xs text-slate-700 focus:outline-none cursor-pointer"
-                    />
-                  </div>
-
-                  {/* Tombol Reset Filter Tanggal */}
-                  {(filterTanggal || filterBulan !== "SEMUA" || filterTahun !== "SEMUA") && (
-                    <button
-                      onClick={() => {
-                        setFilterTanggal("");
-                        setFilterBulan("SEMUA");
-                        setFilterTahun("SEMUA");
-                      }}
-                      className="text-[10px] text-red-600 hover:underline font-bold px-1"
-                    >
-                      Reset Tgl
-                    </button>
-                  )}
-
-                  {/* Search Input Tiket */}
+                <h3 className="font-bold text-sm text-slate-800">Laporan Kendala Terbaru</h3>
+                <div className="flex space-x-2 w-full sm:w-auto justify-between sm:justify-end">
                   <div className="relative flex-1 sm:flex-initial">
                     <Search className="absolute left-2.5 top-2 text-slate-400" size={14} />
                     <input 
@@ -1365,46 +1308,30 @@ export default function DashboardPage() {
                       className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-md text-xs focus:outline-none" 
                     />
                   </div>
+                  {reports.length > 0 && (
+                    <button onClick={clearData} title="Reset Data Laporan" className="p-1.5 border border-slate-200 rounded-md text-red-500 hover:bg-red-50 cursor-pointer">
+                      <Trash2 size={14} />
+                    </button>
+                  )}
+                </div>
               </div>
-          </div>
 
-              {/* Filter Per-Unit RTG & Status Histori */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
-                <div className="flex items-center space-x-1.5 overflow-x-auto pb-1.5 max-w-full">
-                  <span className="text-[11px] font-bold text-slate-400 mr-1 shrink-0">Filter Unit:</span>
-                  
+              {/* Filter Kategori */}
+              <div className="flex items-center space-x-1.5 mb-3 overflow-x-auto pb-1.5 max-w-full">
+                <span className="text-[11px] font-bold text-slate-400 mr-1 shrink-0">Filter:</span>
+                {["SEMUA", "Sistem Hidrolik", "Spreader & Twistlock", "Hoist & Motor", "Sistem Elektrikal / Genset", "Gantry & Ban"].map((kat) => (
                   <button
-                    onClick={() => setSelectedRtgFilter("SEMUA")}
-                    className={`px-3 py-1 rounded-full text-[10px] font-semibold transition whitespace-nowrap cursor-pointer shrink-0 ${
-                      selectedRtgFilter === "SEMUA"
-                        ? "bg-[#0b3c3c] text-white shadow-sm"
+                    key={kat}
+                    onClick={() => setSelectedKategoriFilter(kat)}
+                    className={`px-2.5 py-1 rounded-full text-[10px] font-semibold transition whitespace-nowrap cursor-pointer shrink-0 ${
+                      selectedKategoriFilter === kat
+                        ? "bg-[#0b3c3c] text-white"
                         : "bg-slate-100 text-slate-600 hover:bg-slate-200"
                     }`}
                   >
-                    SEMUA UNIT
+                    {kat}
                   </button>
-
-                  {uniqueRtgUnits.map((unitCode) => (
-                    <button
-                      key={unitCode}
-                      onClick={() => setSelectedRtgFilter(unitCode)}
-                      className={`px-3 py-1 rounded-full text-[10px] font-semibold transition whitespace-nowrap cursor-pointer shrink-0 ${
-                        selectedRtgFilter === unitCode
-                          ? "bg-[#0b3c3c] text-white shadow-sm"
-                          : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                      }`}
-                    >
-                      {unitCode}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Info Indikator Histori */}
-                {selectedRtgFilter !== "SEMUA" && (
-                  <span className="text-[10px] bg-emerald-50 text-emerald-700 font-bold px-2.5 py-1 rounded-md border border-emerald-200 shrink-0">
-                    Histori Laporan: {selectedRtgFilter} ({filteredReports.length} Tiket)
-                  </span>
-                )}
+                ))}
               </div>
 
               {/* Tabel Data */}
@@ -1480,6 +1407,7 @@ export default function DashboardPage() {
           </div>
         </div>
       </main>
+    );
 
       {/* POP-UP MODAL REALTIME: KLIK CARD RTG */}
       {showRtgModal && selectedRtgCard && (

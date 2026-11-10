@@ -413,26 +413,18 @@ export default function PenangananTeknisPage() {
     }
   };
 
-  // Aksi Baru: Pindahkan Tiket ke WAITING PACK di Supabase
-const handleHoldWaitingPack = async (workOrderId?: string) => {
+  // Fungsi untuk memindahkan status ke WAITING_PART dari Modal Detail
+  const handleHoldWaitingPart = async (workOrderId?: string, partName?: string) => {
   if (!workOrderId) {
     alert("ID Work Order tidak ditemukan!");
     return;
   }
 
-  if (!namaSparepart.trim()) {
+  const targetPart = partName || namaSparepart;
+  if (!targetPart.trim()) {
     alert("Masukkan nama sparepart / komponen yang sedang ditunggu!");
     return;
   }
-
-  await createAuditLog({
-  userId: currentUserId,
-  userName: "Teknisi Lapangan",
-  userRole: role,
-  action: "HOLD_WAITING_PACK",
-  description: `Penanganan unit ${selectedReport?.rtg} ditunda (Waiting Pack). Memerlukan sparepart: ${namaSparepart}`,
-  targetId: workOrderId,
-});
 
   try {
     setIsSubmitting(true);
@@ -440,7 +432,7 @@ const handleHoldWaitingPack = async (workOrderId?: string) => {
       .from("work_orders")
       .update({
         status: "WAITING_PART",
-        resolution_notes: `[WAITING SPAREPART]: ${namaSparepart.trim()}`,
+        resolution_notes: `[WAITING SPAREPART]: ${targetPart.trim()}`,
       })
       .eq("id", workOrderId);
 
@@ -579,7 +571,7 @@ const handleHoldWaitingPack = async (workOrderId?: string) => {
           </div>
         </div>
 
-        {/* Navigasi Desktop/PC */}
+        {/* Navigasi Desktop */}
         <nav className="hidden lg:flex items-center space-x-2 bg-[#082e2e] p-1.5 rounded-full text-xs shadow-inner">
           {(role === "admin" || role === "operator") && (
             <Link
@@ -765,64 +757,40 @@ const handleHoldWaitingPack = async (workOrderId?: string) => {
         </div>
       </header>
 
-      {/* DROPDOWN HAMBURGER MENU (KHUSUS MOBILE) */}
-      {mobileMenuOpen && (
-        <div className="lg:hidden bg-[#082e2e] text-white px-4 py-3 border-b border-emerald-800/40 space-y-2 shadow-lg animate-in slide-in-from-top duration-200">
-          {(role === "admin" || role === "operator") && (
+     {/* Navigasi Desktop */}
+        <nav className="hidden lg:flex items-center space-x-2 bg-[#082e2e] p-1.5 rounded-full text-xs shadow-inner">
+          {/* Teknisi & Admin melihat Dashboard & Penanganan Teknisi */}
+          {(role === "admin" || role === "teknisi") && (
             <Link
-              href="/form-pelaporan"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
-                pathname === "/form-pelaporan"
-                  ? "bg-white text-[#0b3c3c]"
-                  : "text-slate-200 hover:bg-[#104848]"
+              href="/dasboard"
+              className={`px-5 py-2 rounded-full transition font-semibold ${
+                pathname === "/dasboard" ? "bg-white text-[#0b3c3c] shadow" : "text-slate-300 hover:text-white"
               }`}
             >
-              Form Pelaporan
+              Dashboard
             </Link>
           )}
-
-          {(role === "admin" || role === "mcc") && (
-            <Link
-              href="/verifikasi-mcc"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
-                pathname === "/verifikasi-mcc"
-                  ? "bg-white text-[#0b3c3c]"
-                  : "text-slate-200 hover:bg-[#104848]"
-              }`}
-            >
-              Approval MCC
-            </Link>
-          )}
-
-          <Link
-            href="/dasboard"
-            onClick={() => setMobileMenuOpen(false)}
-            className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
-              pathname === "/dasboard"
-                ? "bg-white text-[#0b3c3c]"
-                : "text-slate-200 hover:bg-[#104848]"
-            }`}
-          >
-            Dashboard Monitoring
-          </Link>
 
           {(role === "admin" || role === "teknisi") && (
             <Link
               href="/penanganan-teknis"
-              onClick={() => setMobileMenuOpen(false)}
-              className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
-                pathname === "/penanganan-teknis"
-                  ? "bg-white text-[#0b3c3c]"
-                  : "text-slate-200 hover:bg-[#104848]"
+              className={`px-5 py-2 rounded-full transition font-semibold ${
+                pathname === "/penanganan-teknis" ? "bg-white text-[#0b3c3c] shadow" : "text-slate-300 hover:text-white"
               }`}
             >
               Penanganan Teknisi
             </Link>
           )}
-        </div>
-      )}
+
+          {/* Menu tambahan khusus Admin/Operator/MCC */}
+          {role === "admin" && (
+            <>
+              <Link href="/form-pelaporan" className={`px-5 py-2 rounded-full transition font-semibold ${pathname === "/form-pelaporan" ? "bg-white text-[#0b3c3c] shadow" : "text-slate-300 hover:text-white"}`}>Form Pelaporan</Link>
+              <Link href="/verifikasi-mcc" className={`px-5 py-2 rounded-full transition font-semibold ${pathname === "/verifikasi-mcc" ? "bg-white text-[#0b3c3c] shadow" : "text-slate-300 hover:text-white"}`}>Approval MCC</Link>
+              <Link href="/audit-log" className={`px-5 py-2 rounded-full transition font-semibold ${pathname === "/audit-log" ? "bg-white text-[#0b3c3c] shadow" : "text-slate-300 hover:text-white"}`}>Audit Log</Link>
+            </>
+          )}
+        </nav>
 
       {/* Main Container */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 mt-4 sm:mt-6 space-y-4 sm:space-y-5">
@@ -968,15 +936,54 @@ const handleHoldWaitingPack = async (workOrderId?: string) => {
                     <div>
                       <div className="flex items-baseline space-x-2">
                         <span className="font-extrabold text-sm text-slate-900">{item.rtg}</span>
-                        <span className="font-bold text-xs text-slate-800">• {item.kategori}</span>
+                        <span className="font-bold text-xs text-slate-800">{item.kategori}</span>
                       </div>
                       <p className="text-slate-500 text-[11px] mt-1 line-clamp-2 leading-relaxed">{item.praOperasi}</p>
                     </div>
+                    
                     <div className="bg-slate-50 p-2 rounded-lg text-[11px] text-slate-600">
                       <span>Teknisi Ditugaskan: <strong>{item.teknisi}</strong></span>
                     </div>
+
+                    {/* Opsi Cepat Waiting Pack Langsung di Kartu */}
+                    <div className="bg-purple-50/50 p-2 rounded-lg border border-purple-100 space-y-1.5">
+                      <div className="flex items-center space-x-1 text-[10px] font-bold text-purple-800">
+                        <Package size={12} className="text-purple-600" />
+                        <span>Kendalanya Sparepart? (Hold ke Waiting Pack):</span>
+                      </div>
+                      <div className="flex gap-1.5">
+                        <input
+                          type="text"
+                          placeholder="Nama sparepart..."
+                          id={`sparepart-${item.id}`}
+                          className="w-full bg-white border border-purple-200 rounded px-2 py-1 text-[11px] focus:outline-none focus:border-purple-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const inputEl = document.getElementById(`sparepart-${item.id}`) as HTMLInputElement;
+                            if (!inputEl || !inputEl.value.trim()) {
+                              alert("Masukkan nama sparepart terlebih dahulu!");
+                              return;
+                            }
+                           handleHoldWaitingPart(item.workOrderId, inputEl.value);
+                          }}
+                          disabled={isSubmitting}
+                          className="px-2.5 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-[10px] font-semibold transition shrink-0 cursor-pointer disabled:opacity-50"
+                        >
+                          Hold
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Tombol Aksi Bawah: Detail & Mulai Kerjakan */}
                     <div className="flex justify-between items-center pt-2 border-t border-slate-100">
-                      <span className="text-[10px] text-slate-500 font-semibold">📍 {item.lokasi}</span>
+                      <button
+                        onClick={() => { setSelectedReport(item); setShowDetailModal(true); }}
+                        className="text-[11px] text-blue-600 font-semibold hover:underline cursor-pointer"
+                      >
+                        Detail →
+                      </button>
                       <button
                         onClick={() => handleMulaiPengerjaan(item.workOrderId)}
                         disabled={isSubmitting}
@@ -1154,7 +1161,6 @@ const handleHoldWaitingPack = async (workOrderId?: string) => {
                   <p className="font-bold text-slate-700">{selectedReport.lokasi}</p>
                 </div>
                 <div>
-
                   <p className="text-slate-400">Prioritas Laporan:</p>
                   <p className="font-bold text-red-600">{selectedReport.prioritas}</p>
                 </div>
@@ -1173,7 +1179,7 @@ const handleHoldWaitingPack = async (workOrderId?: string) => {
                 <p className="p-3 bg-red-50 text-red-700 rounded-lg">{selectedReport.praOperasi}</p>
               </div>
 
-              {/* RENDER MEDIA LAMPIRAN LAPORAN / PROSES */}
+              {/* LAMPIRAN MEDIA */}
               <div className="space-y-2 pt-2 border-t border-slate-100">
                 <p className="font-bold text-slate-700 flex items-center justify-between">
                   <span>Lampiran Foto/Video Terkait:</span>
@@ -1199,36 +1205,44 @@ const handleHoldWaitingPack = async (workOrderId?: string) => {
                         ) : (
                           <img src={media.url} alt={media.name} className="w-full h-full object-cover transition group-hover:scale-105" />
                         )}
-                        <div className="absolute top-1.5 left-1.5 bg-slate-900/80 text-white text-[9px] px-2 py-0.5 rounded font-medium backdrop-blur-xs flex items-center space-x-1 z-10">
-                          {media.type === "video" ? <Film size={10} /> : <Camera size={10} />}
-                          <span className="truncate max-w-[120px]">{media.name}</span>
-                        </div>
                       </div>
                     ))}
                   </div>
                 ) : (
                   <div className="bg-slate-50 p-3 rounded-lg border border-dashed border-slate-200 text-center text-slate-400 text-xs">
-                    <Camera size={18} className="mx-auto mb-1 text-slate-300" />
                     <span>Tidak ada lampiran foto/video.</span>
                   </div>
                 )}
               </div>
 
-              {/* Input Tambahan untuk Waiting Pack */}
-              <div>
-                <label className="font-bold text-slate-700 flex items-center space-x-1 mb-1">
-                  <Package size={14} className="text-purple-600" />
-                  <span>Nama Sparepart yang Ditunggu (Isi jika memindahkan ke Waiting Pack):</span>
-                </label>
-                <input
-                  type="text"
-                  value={namaSparepart}
-                  onChange={(e) => setNamaSparepart(e.target.value)}
-                  placeholder="Contoh: Seal Kit Hoist Cylinder / Twistlock Sensor..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-purple-500"
-                />
-              </div>
-              {/* FORM HANYA TAMPIL JIKA STATUS BELUM SELESAI */}
+              {/* INPUT SPAREPART & KONTROL WAITING PACK (Selalu tampil jika belum selesai) */}
+              {selectedReport.status !== "SELESAI" && (
+                <div className="bg-purple-50/60 p-3 rounded-xl border border-purple-200 space-y-2">
+                  <label className="font-bold text-purple-900 flex items-center space-x-1">
+                    <Package size={14} className="text-purple-600" />
+                    <span>Kendala Sparepart? (Pindahkan ke Waiting Part):</span>
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={namaSparepart}
+                      onChange={(e) => setNamaSparepart(e.target.value)}
+                      placeholder="Nama komponen / sparepart..."
+                      className="w-full bg-white border border-purple-200 rounded-lg px-3 py-1.5 text-xs focus:outline-none focus:border-purple-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleHoldWaitingPart(selectedReport.workOrderId)}
+                      disabled={isSubmitting}
+                      className="px-3 py-1.5 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 transition shrink-0 text-xs cursor-pointer disabled:opacity-50"
+                    >
+                      Set Waiting Part
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* FORM PENYELESAIAN */}
               {selectedReport.status !== "SELESAI" ? (
                 <form onSubmit={handleSelesaikanTiket} className="pt-2 border-t border-slate-100 space-y-3">
                   <div>
@@ -1238,7 +1252,7 @@ const handleHoldWaitingPack = async (workOrderId?: string) => {
                       required
                       value={catatanPerbaikan}
                       onChange={(e) => setCatatanPerbaikan(e.target.value)}
-                      placeholder="Jelaskan komponen yang diganti, tindakan perbaikan, atau pengujian yang telah dilakukan..."
+                      placeholder="Jelaskan tindakan perbaikan atau pengujian yang telah dilakukan..."
                       className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-emerald-500"
                     />
                   </div>
@@ -1249,7 +1263,7 @@ const handleHoldWaitingPack = async (workOrderId?: string) => {
                       type="file"
                       accept="image/*,video/*"
                       onChange={(e) => e.target.files && setFileHasilPerbaikan(e.target.files[0])}
-                      className="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100 cursor-pointer"
+                      className="w-full text-xs text-slate-500 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-700"
                     />
                   </div>
 
@@ -1258,16 +1272,19 @@ const handleHoldWaitingPack = async (workOrderId?: string) => {
                       Batal
                     </button>
 
-                    <button
-                      type="button"
-                      onClick={() => handleHoldWaitingPack(selectedReport.workOrderId)}
-                      disabled={isSubmitting}
-                      className="px-3.5 py-2 bg-purple-600 text-white rounded-lg font-semibold hover:bg-purple-700 transition cursor-pointer disabled:opacity-50"
-                    >
-                      Hold (Waiting Pack)
-                    </button>
+                    {/* Tombol Cepat Mulai Kerjakan jika status awal masih menunggu */}
+                    {selectedReport.status === "MENUNGGU PENANGANAN" && (
+                      <button
+                        type="button"
+                        onClick={() => handleMulaiPengerjaan(selectedReport.workOrderId)}
+                        disabled={isSubmitting}
+                        className="px-4 py-2 bg-emerald-600 text-white rounded-lg font-semibold hover:bg-emerald-700 transition cursor-pointer"
+                      >
+                        Mulai Kerjakan
+                      </button>
+                    )}
 
-                    <button type="submit" disabled={isSubmitting} className="px-4 py-2 bg-amber-600 text-white rounded-lg font-semibold hover:bg-amber-700 transition cursor-pointer disabled:opacity-50">
+                    <button type="submit" disabled={isSubmitting} className="px-4 py-2 bg-amber-600 text-white rounded-lg font-semibold hover:bg-amber-700 transition cursor-pointer">
                       {isSubmitting ? "Menyimpan..." : "Tandai Perbaikan Selesai"}
                     </button>
                   </div>
@@ -1279,14 +1296,6 @@ const handleHoldWaitingPack = async (workOrderId?: string) => {
                 </div>
               )}
             </div>
-
-            {selectedReport.status === "SELESAI" && (
-              <div className="pt-3 border-t border-slate-100 flex justify-end">
-                <button onClick={() => setShowDetailModal(false)} className="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg text-xs font-semibold hover:bg-slate-200 cursor-pointer">
-                  Tutup
-                </button>
-              </div>
-            )}
           </div>
         </div>
       )}
