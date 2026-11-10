@@ -799,6 +799,20 @@ export default function ApprovalMCCPage() {
               Penanganan Teknisi
             </Link>
           )}
+
+          {(role === "admin" || role === "mcc") && (
+            <Link
+              href="/audit-log"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`block px-4 py-2.5 rounded-lg text-xs font-semibold transition ${
+                pathname === "/audit-log"
+                  ? "bg-white text-[#0b3c3c] font-bold"
+                  : "text-slate-200 hover:bg-[#134e4e]"
+              }`}
+            >
+              Audit Log
+            </Link>
+          )}
         </div>
       )}
 
