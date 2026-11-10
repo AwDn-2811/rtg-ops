@@ -882,6 +882,83 @@ export default function DashboardPage() {
         </div>
       </header>
 
+      {/* DROPDOWN HAMBURGER MENU */}
+      {mobileMenuOpen && (
+        <div className="w-full bg-[#0b3c3c] px-5 pt-3 pb-3 animate-in fade-in slide-in-from-top-1 duration-200">
+          <div className="w-full bg-white rounded-xl overflow-hidden shadow-sm flex flex-col">
+
+            {(role === "admin" || role === "operator") && (
+              <Link
+                href="/form-pelaporan"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`w-full px-5 py-2.5  flex items-center text-sm font-semibold transition ${
+                pathname === "/form-pelaporan"
+                  ? "text-[#0b3c3c] bg-slate-50"
+                  : "text-slate-600 hover:bg-slate-50"
+              }`}
+              >
+                Form Pelaporan
+              </Link>
+            )}
+
+            {(role === "admin" || role === "mcc") && (
+              <Link
+                href="/verifikasi-mcc"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`w-full px-5 py-3.5 text-sm font-semibold transition ${
+                  pathname === "/verifikasi-mcc"
+                    ? "bg-slate-50 text-[#0b3c3c]"
+                    : "text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                Approval MCC
+              </Link>
+            )}
+
+            <Link
+              href="/dasboard"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`w-full px-5 py-3.5 text-sm font-semibold transition border-b border-slate-100 ${
+                pathname === "/dasboard"
+                  ? "bg-slate-50 text-[#0b3c3c]"
+                  : "text-slate-600 hover:bg-slate-50"
+              }`}
+            >
+              Dashboard Monitoring
+            </Link>
+
+            {(role === "admin" || role === "teknisi") && (
+              <Link
+                href="/penanganan-teknis"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`w-full px-5 py-3.5 text-sm font-semibold transition border-b border-slate-100 ${
+                  pathname === "/penanganan-teknis"
+                    ? "bg-slate-50 text-[#0b3c3c]"
+                    : "text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                Penanganan Teknisi
+              </Link>
+            )}
+
+            {(role === "admin" || role === "mcc") && (
+              <Link
+                href="/audit-log"
+                onClick={() => setMobileMenuOpen(false)}
+                className={`w-full px-5 py-3.5 text-sm font-semibold transition ${
+                  pathname === "/audit-log"
+                    ? "bg-slate-50 text-[#0b3c3c]"
+                    : "text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                Audit Log
+              </Link>
+            )}
+
+          </div>
+        </div>
+      )}
+
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 mt-4 sm:mt-6 space-y-4 sm:space-y-6">
         {/* Banner Utama */}
