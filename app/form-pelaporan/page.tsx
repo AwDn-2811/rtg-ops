@@ -40,6 +40,13 @@ export default function FormPelaporanPage() {
   const [role, setRole] = useState<string | null>(null);
   const [profileLoading, setProfileLoading] = useState(true);
 
+  // State menampung profil pengguna yang sedang login dari Supabase
+  const [currentUserProfile, setCurrentUserProfile] = useState<{
+    full_name: string;
+    employee_id: string;
+    role: string;
+  } | null>(null);
+
   useEffect(() => {
     let isMounted = true;
 
@@ -55,11 +62,12 @@ export default function FormPelaporanPage() {
           return;
         }
 
-        const { data: profile, error: profileError } = await supabase
-          .from("profiles")
-          .select("role, is_active")
-          .eq("id", user.id)
-          .single();
+        const { data: profile, error: profileError } =
+          await supabase
+            .from("profiles")
+            .select("full_name, employee_id, role, is_active")
+            .eq("id", user.id)
+            .single();
 
         if (profileError || !profile || !profile.is_active) {
           await supabase.auth.signOut();
@@ -77,6 +85,11 @@ export default function FormPelaporanPage() {
 
         if (isMounted) {
           setRole(profile.role);
+          setCurrentUserProfile({
+            full_name: profile.full_name || "User RTG-ops",
+            employee_id: profile.employee_id || "-",
+            role: profile.role,
+          });
         }
       } catch (error) {
         console.error("Gagal memeriksa akses:", error);
@@ -530,49 +543,8 @@ export default function FormPelaporanPage() {
           )}
         </nav>
 
-        {/* Notifikasi & Profile Pop-up */}
+        {/* Profile Pop-up */}
         <div className="flex items-center space-x-2 sm:space-x-4 shrink-0">
-          <div className="relative">
-            <button
-              onClick={() => {
-                setShowNotif(!showNotif);
-                setShowProfile(false);
-                setMobileMenuOpen(false);
-              }}
-              className="p-2.5 text-slate-200 hover:text-white rounded-full hover:bg-[#134e4e] transition relative"
-            >
-              <Bell size={18} />
-              {reportsCount > 0 && (
-                <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse"></span>
-              )}
-            </button>
-
-            {showNotif && (
-              <div className="absolute right-0 mt-3 w-72 sm:w-80 bg-white text-slate-800 rounded-xl shadow-xl border border-slate-200 overflow-hidden z-50">
-                <div className="p-3 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
-                  <span className="font-bold text-xs text-slate-700">Notifikasi Kendala</span>
-                  <span className="text-[10px] bg-red-100 text-red-600 font-semibold px-2 py-0.5 rounded-full">
-                    {reportsCount} Baru
-                  </span>
-                </div>
-                <div className="max-h-64 overflow-y-auto divide-y divide-slate-100">
-                  {recentReports.length === 0 ? (
-                    <div className="p-4 text-center text-xs text-slate-400">Tidak ada notifikasi baru</div>
-                  ) : (
-                    recentReports.map((item, idx) => (
-                      <div key={idx} className="p-3 hover:bg-slate-50 transition text-xs">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="font-bold text-red-600">{item.rtg}</span>
-                          <span className="text-[10px] text-slate-400">{item.jam}</span>
-                        </div>
-                        <p className="text-slate-600 text-[11px] line-clamp-2">{item.praOperasi}</p>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
 
           <div className="relative">
             <button
@@ -581,14 +553,18 @@ export default function FormPelaporanPage() {
                 setShowNotif(false);
                 setMobileMenuOpen(false);
               }}
-              className="flex items-center space-x-2 sm:space-x-3 bg-[#134e4e] hover:bg-[#185d5d] px-3 sm:px-4 py-2 rounded-full text-xs transition border border-emerald-700/50 cursor-pointer"
+              className="flex items-center space-x-2 sm:space-x-3 bg-[#134e4e] hover:bg-[#185d5d] px-3 sm:px-4 py-1.5 sm:py-2 rounded-full text-xs transition border border-emerald-700/50 cursor-pointer"
             >
-              <div className="p-1 bg-emerald-500 rounded-full text-white">
-                <User size={15} />
+              <div className="p-1 bg-emerald-500 rounded-full text-white font-bold text-[10px] w-6 h-6 flex items-center justify-center">
+                {currentUserProfile?.full_name?.charAt(0)?.toUpperCase() || "U"}
               </div>
               <div className="text-left leading-tight hidden sm:block">
-                <p className="font-semibold text-white text-xs">Supervisi Lapangan</p>
-                <p className="text-[10px] text-emerald-200">Shift A - Pier 2</p>
+                <p className="font-semibold text-white text-xs">
+                  {currentUserProfile?.full_name || "Memuat..."}
+                </p>
+                <p className="text-[10px] text-emerald-200">
+                  Role: <span className="uppercase font-bold">{currentUserProfile?.role || role}</span>
+                </p>
               </div>
             </button>
 
@@ -596,26 +572,36 @@ export default function FormPelaporanPage() {
               <div className="absolute right-0 mt-3 w-64 bg-white text-slate-800 rounded-xl shadow-xl border border-slate-200 overflow-hidden z-50 p-4 space-y-3">
                 <div className="flex items-center space-x-3 border-b border-slate-100 pb-3">
                   <div className="w-10 h-10 rounded-full bg-[#0b3c3c] text-white flex items-center justify-center font-bold text-sm">
-                    SL
+                    {currentUserProfile?.full_name?.charAt(0)?.toUpperCase() || "U"}
                   </div>
-                  <div>
-                    <h4 className="font-bold text-xs text-slate-800">Bambang S.</h4>
-                    <p className="text-[10px] text-slate-400">ID Supervisor: #SPV-9942</p>
+                  <div className="overflow-hidden">
+                    <h4 className="font-bold text-xs text-slate-800 truncate">
+                      {currentUserProfile?.full_name || "User Terminal"}
+                    </h4>
+                    <p className="text-[10px] text-slate-400 font-mono">
+                      ID: {currentUserProfile?.employee_id || "-"}
+                    </p>
                   </div>
                 </div>
 
-                <div className="space-y-1.5 text-xs">
-                  <div className="flex justify-between text-slate-600">
-                    <span>Shift Tugas:</span>
-                    <span className="font-semibold text-slate-800">Shift A (07:00 - 15:00)</span>
+                <div className="space-y-2 text-xs">
+                  <div className="flex justify-between items-center text-slate-600">
+                    <span>Nama Lengkap:</span>
+                    <span className="font-semibold text-slate-800 truncate max-w-[120px]">
+                      {currentUserProfile?.full_name}
+                    </span>
                   </div>
-                  <div className="flex justify-between text-slate-600">
-                    <span>Area Pengawasan:</span>
-                    <span className="font-semibold text-slate-800">Pier 2 Dermaga</span>
+                  <div className="flex justify-between items-center text-slate-600">
+                    <span>ID Pegawai:</span>
+                    <span className="font-mono font-bold text-slate-800 bg-slate-100 px-1.5 py-0.5 rounded text-[10px]">
+                      {currentUserProfile?.employee_id}
+                    </span>
                   </div>
-                  <div className="flex justify-between text-slate-600">
-                    <span>Status TOS:</span>
-                    <span className="text-emerald-600 font-semibold">Terhubung</span>
+                  <div className="flex justify-between items-center text-slate-600">
+                    <span>Role Akses:</span>
+                    <span className="font-bold text-[#0b3c3c] uppercase bg-emerald-50 px-2 py-0.5 rounded text-[10px] border border-emerald-200">
+                      {currentUserProfile?.role}
+                    </span>
                   </div>
                 </div>
 
