@@ -605,16 +605,57 @@ export default function ApprovalMCCPage() {
         </div>
 
         {/* Navigasi Desktop */}
-        <nav className="hidden lg:flex items-center space-x-2 bg-[#082e2e] p-1.5 rounded-full text-xs shadow-inner">
+        <nav className="hidden lg:flex items-center space-x-1 sm:space-x-2 bg-[#082e2e] p-1 sm:p-1.5 rounded-full text-[11px] sm:text-xs shadow-inner">
           {(role === "admin" || role === "operator") && (
-            <Link href="/form-pelaporan" className={`px-5 py-2 rounded-full transition font-semibold ${pathname === "/form-pelaporan" ? "bg-white text-[#0b3c3c] shadow" : "text-slate-300 hover:text-white"}`}>Form Pelaporan</Link>
+            <Link
+              href="/form-pelaporan"
+              className={`px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-full transition font-semibold whitespace-nowrap ${
+                pathname === "/form-pelaporan"
+                  ? "bg-white text-[#0b3c3c] shadow"
+                  : "text-slate-300 hover:text-white"
+              }`}
+            >
+              Form Pelaporan
+            </Link>
           )}
+
           {(role === "admin" || role === "mcc") && (
-            <Link href="/verifikasi-mcc" className={`px-5 py-2 rounded-full transition font-semibold ${pathname === "/verifikasi-mcc" ? "bg-white text-[#0b3c3c] shadow" : "text-slate-300 hover:text-white"}`}>Approval MCC</Link>
+            <Link
+              href="/verifikasi-mcc"
+              className={`px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-full transition font-semibold whitespace-nowrap ${
+                pathname === "/verifikasi-mcc"
+                  ? "bg-white text-[#0b3c3c] shadow"
+                  : "text-slate-300 hover:text-white"
+              }`}
+            >
+              Approval MCC
+            </Link>
           )}
-          <Link href="/dasboard" className={`px-5 py-2 rounded-full transition font-semibold ${pathname === "/dasboard" ? "bg-white text-[#0b3c3c] shadow" : "text-slate-300 hover:text-white"}`}>Dashboard</Link>
+
+          {(role === "admin" || role === "mcc" || role === "teknisi") && (
+            <Link
+              href="/dasboard"
+              className={`px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-full transition font-semibold whitespace-nowrap ${
+                pathname === "/dasboard"
+                  ? "bg-white text-[#0b3c3c] shadow"
+                  : "text-slate-300 hover:text-white"
+              }`}
+            >
+              Dashboard
+            </Link>
+          )}
+
           {(role === "admin" || role === "teknisi") && (
-            <Link href="//penanganan-teknisi" className={`px-5 py-2 rounded-full transition font-semibold ${pathname === "/penanganan-teknis" ? "bg-white text-[#0b3c3c] shadow" : "text-slate-300 hover:text-white"}`}>Penanganan Teknisi</Link>
+            <Link
+              href="/penanganan-teknis"
+              className={`px-3.5 sm:px-5 py-1.5 sm:py-2 rounded-full transition font-semibold whitespace-nowrap ${
+                pathname === "/penanganan-teknis"
+                  ? "bg-white text-[#0b3c3c] shadow"
+                  : "text-slate-300 hover:text-white"
+              }`}
+            >
+              Penanganan Teknisi
+            </Link>
           )}
 
           {(role === "admin" || role === "mcc") && (
