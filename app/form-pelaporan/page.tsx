@@ -988,7 +988,7 @@ export default function FormPelaporanPage() {
                 <div>
                   <h3 className="font-extrabold text-base text-white">Laporan Berhasil Terkirim!</h3>
                   <p className="text-xs text-slate-400 mt-1 leading-relaxed">
-                    Data kerusakan unit <strong className="text-white">{nomorRtg}</strong> telah berhasil ditransmisikan ke antrean <span className="text-emerald-400 font-bold">Verifikasi MCC</span>.
+                    Data kerusakan unit <strong className="text-white">{nomorRtg}</strong> telah berhasil diteruskan ke antrean <span className="text-emerald-400 font-bold">Verifikasi MCC</span>.
                   </p>
                 </div>
 

@@ -113,12 +113,12 @@ export default function AuditLogPage() {
   useEffect(() => {
     fetchLogs();
 
-    // Realtime Listener untuk Audit Log
+    // Realtime Listener untuk Semua Perubahan Audit Log
     const channel = supabase
       .channel("audit_logs_realtime")
       .on(
         "postgres_changes",
-        { event: "INSERT", schema: "public", table: "audit_logs" },
+        { event: "*", schema: "public", table: "audit_logs" },
         () => fetchLogs()
       )
       .subscribe();
@@ -306,7 +306,7 @@ export default function AuditLogPage() {
               <option value="SEMUA">Semua Jenis Aksi</option>
               <option value="MCC_APPROVE">MCC Approve</option>
               <option value="MCC_REJECT">MCC Reject</option>
-              <option value="HOLD_WAITING_PACK">Hold Waiting Pack</option>
+              <option value="HOLD_WAITING_PART">Hold Waiting Part</option>
               <option value="COMPLETE_REPAIR">Perbaikan Selesai</option>
             </select>
           </div>
@@ -361,7 +361,7 @@ export default function AuditLogPage() {
                               ? "bg-emerald-100 text-emerald-700"
                               : log.action === "MCC_REJECT"
                               ? "bg-red-100 text-red-700"
-                              : log.action === "HOLD_WAITING_PACK"
+                              : log.action === "HOLD_WAITING_PART"
                               ? "bg-purple-100 text-purple-700"
                               : "bg-blue-100 text-blue-700"
                           }`}

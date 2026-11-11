@@ -493,7 +493,7 @@ export default function ApprovalMCCPage() {
         }
       }
 
-          await createAuditLog({
+        await createAuditLog({
         userId: currentUserId,
         userName: "Operator MCC",
         userRole: role,
@@ -537,11 +537,16 @@ export default function ApprovalMCCPage() {
     }
 
     try {
+      // Dapatkan ID user login secara langsung dari Supabase Auth
+      const { data: { user } } = await supabase.auth.getUser();
+      const activeUserId = currentUserId || user?.id || "";
+
+      // Update status laporan di rtg_reports
       const { error } = await supabase
         .from("rtg_reports")
         .update({
           verification_status: "REJECTED",
-          mcc_id: currentUserId,
+          mcc_id: activeUserId,
           verified_at: new Date().toISOString(),
         })
         .eq("id", reportId);
@@ -551,6 +556,33 @@ export default function ApprovalMCCPage() {
         return;
       }
 
+      // UPDATE STATUS UNIT RTG KEMBALI MENJADI 'READY' (Karena Laporan Ditolak)
+      if (selectedReport?.rtg_id) {
+        const { error: rtgStatusError } = await supabase
+          .from("rtg_statuses")
+          .update({
+            status: "READY",
+            last_updated: new Date().toISOString(),
+          })
+          .eq("id", selectedReport.rtg_id);
+
+        if (rtgStatusError) {
+          console.error("Gagal memperbarui status RTG ke READY:", rtgStatusError.message);
+        }
+      }
+
+      // Simpan ke Audit Log (Memastikan ID User terisi)
+      if (activeUserId) {
+        await createAuditLog({
+          userId: activeUserId,
+          userName: currentUserProfile?.full_name || "Operator MCC",
+          userRole: role || "mcc",
+          action: "MCC_REJECT",
+          description: `MCC menolak laporan unit ${selectedReport?.rtg || "RTG"}. Alasan: ${alasanPenolakan.trim()}`,
+          targetId: reportId,
+        });
+      }
+
       alert("Laporan berhasil ditolak.");
       setSelectedReport(null);
       setShowDetailModal(false);
@@ -558,6 +590,7 @@ export default function ApprovalMCCPage() {
       await loadData();
     } catch (err) {
       console.error("Error rejecting report:", err);
+      alert("Terjadi kesalahan saat menolak laporan.");
     }
   };
 

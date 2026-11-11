@@ -132,6 +132,7 @@ export default function PenangananTeknisPage() {
 
        if (isMounted) {
           setRole(profile.role);
+          setCurrentUserId(user.id);
           setCurrentUserProfile({
             full_name: profile.full_name || "User RTG-ops",
             employee_id: profile.employee_id || "-",
@@ -413,7 +414,7 @@ export default function PenangananTeknisPage() {
     }
   };
 
-  // Fungsi untuk memindahkan status ke WAITING_PART dari Modal Detail
+  // Handle untuk memindahkan status ke WAITING_PART dari Modal Detail
   const handleHoldWaitingPart = async (workOrderId?: string, partName?: string) => {
   if (!workOrderId) {
     alert("ID Work Order tidak ditemukan!");
@@ -440,6 +441,16 @@ export default function PenangananTeknisPage() {
       alert("Gagal memperbarui status: " + error.message);
       return;
     }
+
+    // AUDIT LOG UNTUK HOLD WAITING PACK / PM
+      await createAuditLog({
+        userId: currentUserId || "",
+        userName: currentUserProfile?.full_name || "Teknisi Lapangan",
+        userRole: role || "teknisi",
+        action: "HOLD_WAITING_PART",
+        description: `Penanganan unit ${selectedReport?.rtg || "RTG"} ditunda (Waiting Part). Memerlukan sparepart: ${targetPart.trim()}`,
+        targetId: workOrderId,
+      });
 
     alert("Status perbaikan diubah menjadi WAITING PART.");
     setShowDetailModal(false);
@@ -504,6 +515,16 @@ export default function PenangananTeknisPage() {
         alert("Gagal menyelesaikan Work Order: " + woError.message);
         return;
       }
+
+      // AUDIT LOG UNTUK PERBAIKAN SELESAI
+      await createAuditLog({
+        userId: currentUserId || "",
+        userName: currentUserProfile?.full_name || "Teknisi Lapangan",
+        userRole: role || "teknisi",
+        action: "COMPLETE_REPAIR",
+        description: `Penanganan unit ${selectedReport?.rtg || "RTG"} telah SELESAI dikerjakan oleh teknisi. Catatan perbaikan: ${catatanPerbaikan.trim()}`,
+        targetId: selectedReport.workOrderId,
+      });
 
       if (selectedReport.rtg_id) {
         await supabase

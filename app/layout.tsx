@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-   title: "PORTWAY | Login",
-  description: "Port Operations Management System",
+   title: "RTG-OPS",
+  description: "MONITORING AND MANAGEMENT SYSTEM FOR RTG UNIT",
 };
 
 export default function RootLayout({
