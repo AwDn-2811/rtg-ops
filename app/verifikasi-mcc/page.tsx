@@ -129,6 +129,7 @@ export default function ApprovalMCCPage() {
 
         if (isMounted) {
           setRole(profile.role);
+          setCurrentUserId(user.id);
           setCurrentUserProfile({
             full_name: profile.full_name || "User RTG-ops",
             employee_id: profile.employee_id || "-",
@@ -594,9 +595,6 @@ export default function ApprovalMCCPage() {
           <div>
             <h1 className="font-bold text-sm sm:text-base leading-none tracking-tight flex items-center space-x-1.5">
               <span>PELAPORAN RTG</span>
-              <span className="bg-emerald-500/30 text-emerald-200 text-[8px] sm:text-[9px] font-medium px-1.5 py-0.5 rounded border border-emerald-400/30">
-                TOS LIVE
-              </span>
             </h1>
             <p className="text-[9px] sm:text-[10px] text-emerald-200 mt-0.5 hidden sm:block">
               OPERASIONAL LAPANGAN TERMINAL PETIKEMAS SURABAYA
@@ -867,10 +865,6 @@ export default function ApprovalMCCPage() {
               <h2 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">
                 Approval Laporan Kendala RTG oleh MCC
               </h2>
-              <span className="bg-emerald-100 text-emerald-800 text-[9px] sm:text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center space-x-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span>LIVE TOS SYNC</span>
-              </span>
             </div>
             <p className="text-slate-500 text-xs mt-0.5 leading-relaxed">
               Daftar laporan kendala RTG yang menunggu verifikasi MCC. Laporan yang disetujui akan
@@ -1292,11 +1286,6 @@ export default function ApprovalMCCPage() {
       <footer className="max-w-7xl mx-auto px-6 mt-6 flex justify-between items-center text-[10px] text-slate-400 border-t border-slate-200/60 pt-4">
         <p>© 2026 Terminal Petikemas Surabaya - Sistem Operasional Rubber-Tired Gantry (RTG).</p>
         <div className="flex items-center space-x-3">
-          <span className="flex items-center space-x-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-            <span className="text-slate-600 font-medium">Terminal TOS Connected</span>
-          </span>
-          <span>TOS Server: V3.4.1-Ops</span>
         </div>
       </footer>
     </div>

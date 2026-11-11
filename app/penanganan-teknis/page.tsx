@@ -561,9 +561,6 @@ export default function PenangananTeknisPage() {
           <div>
             <h1 className="font-bold text-sm sm:text-base leading-none tracking-tight flex items-center space-x-1.5">
               <span>PELAPORAN RTG</span>
-              <span className="bg-emerald-500/30 text-emerald-200 text-[8px] sm:text-[9px] font-medium px-1.5 py-0.5 rounded border border-emerald-400/30">
-                TOS LIVE
-              </span>
             </h1>
             <p className="text-[9px] sm:text-[10px] text-emerald-200 mt-0.5 hidden sm:block">
               OPERASIONAL LAPANGAN TERMINAL PETIKEMAS SURABAYA
@@ -839,10 +836,6 @@ export default function PenangananTeknisPage() {
           <div>
             <div className="flex items-center space-x-2">
               <h2 className="text-lg sm:text-xl font-bold text-slate-900 tracking-tight">Monitoring & Penanganan Teknisi RTG</h2>
-              <span className="bg-emerald-100 text-emerald-800 text-[9px] sm:text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center space-x-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span>LIVE TOS SYNC</span>
-              </span>
             </div>
             <p className="text-slate-500 text-xs mt-0.5 leading-relaxed">
               Papan kendali work order penanganan kerusakan, inspeksi mekanikal-elektrikal, dan alokasi tim teknisi lapangan secara real-time.
@@ -989,7 +982,7 @@ export default function PenangananTeknisPage() {
                     <div className="bg-purple-50/50 p-2 rounded-lg border border-purple-100 space-y-1.5">
                       <div className="flex items-center space-x-1 text-[10px] font-bold text-purple-800">
                         <Package size={12} className="text-purple-600" />
-                        <span>Kendalanya Sparepart? (Hold ke Waiting Pack):</span>
+                        <span>Kendalanya Sparepart? (Hold ke Waiting Part):</span>
                       </div>
                       <div className="flex gap-1.5">
                         <input
@@ -1356,11 +1349,6 @@ export default function PenangananTeknisPage() {
       <footer className="max-w-7xl mx-auto px-6 mt-6 flex justify-between items-center text-[10px] text-slate-400 border-t border-slate-200/60 pt-4">
         <p>© 2026 Terminal Petikemas Surabaya - Sistem Operasional Rubber-Tired Gantry (RTG).</p>
         <div className="flex items-center space-x-3">
-          <span className="flex items-center space-x-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-            <span className="text-slate-600 font-medium">Terminal TOS Connected</span>
-          </span>
-          <span>TOS Server: V3.4.1-Ops</span>
         </div>
       </footer>
     </div>

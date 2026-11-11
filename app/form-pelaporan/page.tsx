@@ -722,10 +722,6 @@ export default function FormPelaporanPage() {
                 <p className="text-xs text-slate-400">Isi formulir berikut untuk melaporkan kendala ke Verifikasi MCC.</p>
               </div>
             </div>
-            <div className="flex items-center space-x-1.5 bg-emerald-50 text-emerald-700 px-3 py-1.5 rounded-full text-xs font-medium self-start sm:self-auto">
-              <ShieldCheck size={16} className="text-emerald-600" />
-              <span>TRANSMISI AMAN TOS V2.4</span>
-            </div>
           </div>
 
           <form className="space-y-6" onSubmit={handleSubmit}>
@@ -1031,11 +1027,6 @@ export default function FormPelaporanPage() {
       <footer className="max-w-5xl mx-auto mt-6 flex flex-col sm:flex-row justify-between items-center text-[11px] text-slate-400 px-4 gap-2 text-center sm:text-left">
         <p>© 2026 Pelabuhan Petikemas - Sistem Operasional Rubber-Tired Gantry (RTG)</p>
         <div className="flex items-center space-x-3">
-          <span className="flex items-center space-x-1">
-            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-            <span>Terminal TOS Connected</span>
-          </span>
-          <span>TOS Server: V3.4.1-Ops</span>
         </div>
       </footer>
     </div>

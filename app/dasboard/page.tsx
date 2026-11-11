@@ -1893,11 +1893,6 @@ export default function DashboardPage() {
       <footer className="max-w-7xl mx-auto px-4 sm:px-6 mt-6 flex flex-col sm:flex-row justify-between items-center text-[11px] text-slate-400 gap-2 text-center sm:text-left">
         <p>© 2026 Terminal Petikemas Surabaya - Sistem Operasional Rubber-Tired Gantry (RTG)</p>
         <div className="flex items-center space-x-3">
-          <span className="flex items-center space-x-1">
-            <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-            <span>Terminal TOS Connected</span>
-          </span>
-          <span>TOS Server: V3.4.1-Ops</span>
         </div>
       </footer>
     </div>
