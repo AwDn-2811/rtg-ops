@@ -502,15 +502,48 @@ export default function ApprovalMCCPage() {
         targetId: reportId,
       });
 
-      // 3. UPDATE STATUS UNIT RTG
+      // UPDATE STATUS UNIT RTG (Hanya jadi READY jika tidak ada laporan aktif lainnya)
       if (selectedReport?.rtg_id) {
-        await supabase
+        const { data: activeReports } = await supabase
+          .from("rtg_reports")
+          .select(`
+            id,
+            verification_status,
+            work_orders (
+              status
+            )
+          `)
+          .eq("rtg_id", selectedReport.rtg_id)
+          .in("verification_status", ["PENDING", "APPROVED"]);
+
+        const stillHasOpenIssue = (activeReports || []).some((rep: any) => {
+          const vStatus = rep.verification_status?.toUpperCase();
+          if (vStatus === "PENDING") return true;
+
+          if (vStatus === "APPROVED") {
+            const woList = Array.isArray(rep.work_orders)
+              ? rep.work_orders
+              : rep.work_orders
+              ? [rep.work_orders]
+              : [];
+            if (woList.length === 0) return true;
+            const woStatus = woList[0]?.status?.toUpperCase();
+            return woStatus !== "DONE" && woStatus !== "COMPLETED" && woStatus !== "SELESAI";
+          }
+          return false;
+        });
+
+        const { error: rtgStatusError } = await supabase
           .from("rtg_statuses")
           .update({
-            status: "NEED_REPAIR",
+            status: stillHasOpenIssue ? "NEED_REPAIR" : "READY",
             last_updated: new Date().toISOString(),
           })
           .eq("id", selectedReport.rtg_id);
+
+        if (rtgStatusError) {
+          console.error("Gagal memperbarui status RTG:", rtgStatusError.message);
+        }
       }
 
       alert(`Tiket Berhasil Dibuat! Priority diset ke ${priorityNum} dan teknisi segera ditugaskan.`);

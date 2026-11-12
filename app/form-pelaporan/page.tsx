@@ -445,7 +445,11 @@ export default function FormPelaporanPage() {
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
-    router.push("/dasboard");
+
+    // Jika bukan operator (misal admin), arahkan ke dashboard
+    if (role !== "operator") {
+      router.push("/dasboard");
+    }
   };
 
   if (profileLoading || !role) {
@@ -1010,13 +1014,23 @@ export default function FormPelaporanPage() {
                   </div>
                 </div>
 
-                <button
-                  onClick={handleCloseModalAndNavigate}
-                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-md flex items-center justify-center space-x-2 cursor-pointer group"
-                >
-                  <span>Pantau di Dashboard Monitoring</span>
-                  <ArrowRight size={14} className="group-hover:translate-x-1 transition" />
-                </button>
+                {role === "operator" ? (
+                  <button
+                    onClick={handleCloseModalAndNavigate}
+                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-md flex items-center justify-center space-x-2 cursor-pointer"
+                  >
+                    <span>Selesai & Buat Laporan Baru</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleCloseModalAndNavigate}
+                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-md flex items-center justify-center space-x-2 cursor-pointer group"
+                  >
+                    <span>Pantau di Dashboard Monitoring</span>
+                    <ArrowRight size={14} className="group-hover:translate-x-1 transition" />
+                  </button>
+
+                )}
               </div>
             )}
           </div>

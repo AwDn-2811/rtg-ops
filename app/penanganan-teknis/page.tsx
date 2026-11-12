@@ -526,11 +526,43 @@ export default function PenangananTeknisPage() {
         targetId: selectedReport.workOrderId,
       });
 
-      if (selectedReport.rtg_id) {
+    if (selectedReport.rtg_id) {
+        // Cek apakah masih ada laporan lain yang aktif pada rtg_id yang sama
+        const { data: activeReports } = await supabase
+          .from("rtg_reports")
+          .select(`
+            id,
+            verification_status,
+            work_orders!report_id (
+              status
+            )
+          `)
+          .eq("rtg_id", selectedReport.rtg_id)
+          .in("verification_status", ["PENDING", "APPROVED"]);
+
+        const stillHasOpenIssue = (activeReports || []).some((rep: any) => {
+          const vStatus = rep.verification_status?.toUpperCase();
+          // Jika masih PENDING di MCC, berarti unit belum ready
+          if (vStatus === "PENDING") return true;
+
+          // Jika APPROVED, cek apakah WO-nya belum DONE
+          if (vStatus === "APPROVED") {
+            const woList = Array.isArray(rep.work_orders)
+              ? rep.work_orders
+              : rep.work_orders
+              ? [rep.work_orders]
+              : [];
+            if (woList.length === 0) return true;
+            const woStatus = woList[0]?.status?.toUpperCase();
+            return woStatus !== "DONE" && woStatus !== "COMPLETED" && woStatus !== "SELESAI";
+          }
+          return false;
+        });
+
         await supabase
           .from("rtg_statuses")
           .update({
-            status: "READY",
+            status: stillHasOpenIssue ? "NEED_REPAIR" : "READY",
             last_updated: new Date().toISOString(),
           })
           .eq("id", selectedReport.rtg_id);

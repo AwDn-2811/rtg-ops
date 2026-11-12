@@ -1036,9 +1036,8 @@ export default function DashboardPage() {
 
           <div className="bg-white p-4 rounded-xl border border-slate-200 sm:col-span-2 md:col-span-1 flex justify-between items-start shadow-sm">
             <div>
-              <p className="text-xs text-slate-500 font-medium">Laporan Hari Ini</p>
+              <p className="text-xs text-slate-500 font-medium">Laporan Kendala Unit</p>
               <h3 className="text-2xl font-bold mt-1 text-slate-800">{reports.length} <span className="text-xs font-normal text-slate-500">laporan masuk</span></h3>
-              <p className="text-[11px] text-blue-600 mt-2 font-medium">Shift A & Shift B Terhubung</p>
             </div>
             <div className="p-2 bg-blue-50 text-blue-500 rounded-lg"><FileText size={20} /></div>
           </div>
