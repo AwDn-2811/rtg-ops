@@ -190,7 +190,7 @@ export default function AuditLogPage() {
                 pathname === "/form-pelaporan" ? "bg-white text-[#0b3c3c] shadow" : "text-slate-300 hover:text-white"
               }`}
             >
-              Form Pelaporan
+              Laporkan Kendala
             </Link>
           )}
 
@@ -253,7 +253,7 @@ export default function AuditLogPage() {
       {/* Mobile Menu Dropdown */}
       {mobileMenuOpen && (
         <div className="lg:hidden bg-[#082e2e] text-white px-4 py-3 border-b border-emerald-800/40 space-y-2 shadow-lg">
-          <Link href="/form-pelaporan" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-2 rounded-lg text-xs font-semibold text-slate-200">Form Pelaporan</Link>
+          <Link href="/form-pelaporan" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-2 rounded-lg text-xs font-semibold text-slate-200">Laporkan Kendala</Link>
           <Link href="/dasboard" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-2 rounded-lg text-xs font-semibold text-slate-200">Dashboard</Link>
           <Link href="/verifikasi-mcc" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-2 rounded-lg text-xs font-semibold text-slate-200">Approval MCC</Link>
           <Link href="/penanganan-teknis" onClick={() => setMobileMenuOpen(false)} className="block px-4 py-2 rounded-lg text-xs font-semibold text-slate-200">Penanganan Teknisi</Link>

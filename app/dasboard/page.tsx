@@ -715,7 +715,7 @@ export default function DashboardPage() {
                   : "text-slate-300 hover:text-white"
               }`}
             >
-              Form Pelaporan
+              Laporkan Kendala
             </Link>
           )}
 
@@ -914,7 +914,7 @@ export default function DashboardPage() {
                   : "text-slate-200 hover:bg-[#134e4e]"
               }`}
             >
-              Form Pelaporan
+              Laporkan Kendala
             </Link>
           )}
 
@@ -1692,7 +1692,7 @@ export default function DashboardPage() {
                     className="w-full mt-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 focus:outline-none focus:border-emerald-500"
                   >
                     <option value="admin">ADMIN (Akses Penuh)</option>
-                    <option value="operator">OPERATOR (Form Pelaporan)</option>
+                    <option value="operator">OPERATOR (Laporkan Kendala)</option>
                     <option value="mcc">MCC (Approval Laporan)</option>
                     <option value="teknisi">TEKNISI (Penanganan Fisik)</option>
                   </select>

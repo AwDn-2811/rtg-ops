@@ -679,7 +679,7 @@ export default function ApprovalMCCPage() {
                   : "text-slate-300 hover:text-white"
               }`}
             >
-              Form Pelaporan
+              Laporkan Kendala
             </Link>
           )}
 
@@ -863,7 +863,7 @@ export default function ApprovalMCCPage() {
                   : "text-slate-200 hover:bg-[#134e4e]"
               }`}
             >
-              Form Pelaporan
+              Laporkan Kendala
             </Link>
           )}
 
